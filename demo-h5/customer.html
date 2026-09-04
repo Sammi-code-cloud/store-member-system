@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>八马茶业 · 会员</title>
+<style>
+  :root{
+    --brand:#9E2B25;--brand-deep:#7E211C;--gold:#B8873C;--gold-soft:#C79A54;
+    --green:#4F6B47;--amber:#C98A2E;--ink:#23201C;--muted:#8A8078;--faint:#B8AFA4;
+    --line:#ECE4D8;--bg:#F5F1EA;--card:#FFFFFF;
+    --shadow:0 10px 30px -16px rgba(60,40,25,.35);
+    --serif:"Songti SC","STSong",Georgia,serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  body{background:var(--bg);color:var(--ink);
+    font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;display:flex;justify-content:center}
+  .app{width:100%;max-width:430px;min-height:100vh;background:var(--bg);position:relative;padding-bottom:92px;overflow-x:hidden}
+  .view{display:none}.view.on{display:block;animation:fade .25s ease}
+  @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  .mono{font-variant-numeric:tabular-nums;letter-spacing:.5px}
+
+  /* topbar */
+  .topbar{padding:calc(env(safe-area-inset-top) + 16px) 22px 10px;display:flex;align-items:center;justify-content:space-between}
+  .topbar .brand{display:flex;align-items:center;gap:10px}
+  .topbar .seal{width:34px;height:34px;border-radius:10px;background:var(--brand);color:#fff;
+    font-family:var(--serif);display:grid;place-items:center;font-size:19px}
+  .topbar .bn{font-family:var(--serif);font-size:19px;font-weight:600;letter-spacing:1px}
+  .topbar .loc{font-size:12px;color:var(--muted)}
+  .page-title{font-family:var(--serif);font-size:24px;font-weight:600;padding:6px 22px 14px;letter-spacing:1px}
+  .page-title .sub{font-family:inherit;display:block;font-size:12px;color:var(--muted);font-weight:400;letter-spacing:0;margin-top:4px}
+
+  /* ===== 首页头图（品牌 + 会员） ===== */
+  .home-hero{position:relative;overflow:hidden;color:#f4ead9;border-radius:0 0 30px 30px;
+    padding:calc(env(safe-area-inset-top) + 20px) 24px 30px;
+    background:linear-gradient(158deg,#412f25 0%,#5e4534 55%,#3b2a20 100%)}
+  .home-hero::after{content:"茶";position:absolute;right:-12px;bottom:-38px;font-family:var(--serif);
+    font-size:180px;color:rgba(200,160,90,.09);line-height:1}
+  .hh-top{display:flex;align-items:center;justify-content:space-between}
+  .hh-brand{display:flex;align-items:center;gap:11px}
+  .hh-seal{width:36px;height:36px;border-radius:11px;background:rgba(200,160,90,.22);
+    border:1px solid rgba(200,160,90,.5);color:#f0d9a8;font-family:var(--serif);display:grid;place-items:center;font-size:20px}
+  .hh-name{font-family:var(--serif);font-size:21px;font-weight:600;letter-spacing:2px}
+  .hh-loc{font-size:12px;color:rgba(244,234,217,.62)}
+  .hh-mem{position:relative;z-index:1;margin-top:24px;display:flex;align-items:flex-end;justify-content:space-between}
+  .hh-lbl{font-size:12px;color:rgba(244,234,217,.68);letter-spacing:1px}
+  .hh-amt{font-family:var(--serif);font-size:44px;font-weight:600;margin-top:7px;line-height:1}
+  .hh-amt small{font-size:22px;opacity:.8;margin-right:3px}
+  .hh-right{text-align:right}
+  .hh-chip{display:inline-block;font-size:11px;color:#f0d9a8;background:rgba(200,150,80,.2);
+    border:1px solid rgba(200,150,80,.5);padding:5px 13px;border-radius:999px}
+  .hh-sub{font-size:11px;color:rgba(244,234,217,.62);margin-top:9px}
+  .hh-sub b{color:#f4ead9}
+
+  /* ===== 轮播图 ===== */
+  .banner{margin-bottom:6px}
+  .bscroll{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;border-radius:20px;
+    box-shadow:0 12px 30px -18px rgba(60,40,25,.5);scrollbar-width:none}
+  .bscroll::-webkit-scrollbar{display:none}
+  .slide{flex:0 0 100%;scroll-snap-align:start;height:162px;padding:24px;position:relative;overflow:hidden;
+    display:flex;flex-direction:column;justify-content:center;color:#fff}
+  .slide .stag{align-self:flex-start;font-size:11px;font-weight:600;background:rgba(255,255,255,.9);
+    color:var(--brand);padding:4px 13px;border-radius:999px;letter-spacing:.5px}
+  .slide .st{font-family:var(--serif);font-size:25px;font-weight:600;margin-top:12px;line-height:1.22}
+  .slide .ss{font-size:12px;opacity:.85;margin-top:9px}
+  .slide .swm{position:absolute;right:-6px;bottom:-24px;font-family:var(--serif);font-size:130px;
+    color:rgba(255,255,255,.12);line-height:1}
+  .dots{display:flex;justify-content:center;gap:6px;margin-top:12px}
+  .dot{width:6px;height:6px;border-radius:999px;background:var(--line);transition:.28s}
+  .dot.on{width:18px;background:var(--brand)}
+
+  /* ===== 活动精选：竖向列表 ===== */
+  .plist{display:flex;flex-direction:column;gap:14px}
+  .prow{display:flex;align-items:center;gap:14px;background:var(--card);border-radius:16px;padding:12px;
+    box-shadow:0 6px 18px -14px rgba(60,40,25,.3)}
+  .prow .th{width:88px;height:88px;border-radius:14px;position:relative;flex:0 0 auto;display:grid;place-items:center;overflow:hidden}
+  .prow .th .tc{font-family:var(--serif);color:rgba(255,255,255,.9);font-size:34px}
+  .prow .th .bd{position:absolute;top:7px;left:7px;background:rgba(255,255,255,.92);color:var(--brand);
+    font-size:9px;font-weight:600;padding:2px 8px;border-radius:999px}
+  .prow .pin{flex:1;min-width:0}
+  .prow .pn{font-family:var(--serif);font-size:16px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .prow .ps{font-size:12px;color:var(--muted);margin-top:4px}
+  .prow .pp{margin-top:9px;display:flex;align-items:baseline;gap:7px}
+  .prow .price{color:var(--brand);font-family:var(--serif);font-weight:700;font-size:19px}
+  .prow .old{color:var(--faint);font-size:12px;text-decoration:line-through}
+  .prow .buy{margin-left:auto;align-self:center;background:#FBF1F0;color:var(--brand);border:1px solid #EBCBC8;
+    font-size:12px;font-weight:600;padding:8px 15px;border-radius:999px;flex:0 0 auto}
+
+  /* membership card */
+  .wrap{padding:6px 20px 24px}
+  .memcard{position:relative;border-radius:22px;padding:24px 22px;overflow:hidden;color:#f3e9da;
+    background:linear-gradient(140deg,#3a2e26 0%,#5a4436 55%,#3a2b22 100%);box-shadow:var(--shadow)}
+  .memcard::after{content:"馬";position:absolute;right:-6px;bottom:-24px;font-family:var(--serif);
+    font-size:150px;color:rgba(200,160,90,.10);line-height:1}
+  .memcard .r1{display:flex;justify-content:space-between;align-items:center}
+  .memcard .lbl{font-size:12px;color:rgba(243,233,218,.7);letter-spacing:1px}
+  .memcard .lv{font-size:11px;color:#f0d9a8;background:rgba(200,150,80,.22);border:1px solid rgba(200,150,80,.45);
+    padding:4px 12px;border-radius:999px}
+  .memcard .amt{font-size:42px;font-weight:600;margin-top:8px;font-family:var(--serif)}
+  .memcard .amt small{font-size:20px;opacity:.8;margin-right:4px}
+  .memcard .r2{display:flex;gap:26px;margin-top:18px;position:relative;z-index:1}
+  .memcard .stat .n{font-size:18px;font-weight:600}
+  .memcard .stat .t{font-size:11px;color:rgba(243,233,218,.65);margin-top:2px}
+
+  /* section head */
+  .sec{display:flex;align-items:baseline;justify-content:space-between;margin:26px 2px 14px}
+  .sec .h{font-family:var(--serif);font-size:18px;font-weight:600}
+  .sec .m{font-size:12px;color:var(--muted)}
+
+  /* products */
+  .prods{display:flex;gap:14px;overflow-x:auto;padding-bottom:4px;scroll-snap-type:x mandatory}
+  .prods::-webkit-scrollbar{display:none}
+  .prod{flex:0 0 auto;width:158px;scroll-snap-align:start;background:var(--card);border-radius:16px;overflow:hidden;
+    box-shadow:0 6px 18px -12px rgba(60,40,25,.3)}
+  .prod .img{height:118px;position:relative;display:flex;align-items:flex-end;padding:12px}
+  .prod .img .nm{color:#fff;font-family:var(--serif);font-size:15px;font-weight:600;line-height:1.3;
+    text-shadow:0 2px 8px rgba(0,0,0,.4)}
+  .prod .img .bd{position:absolute;top:10px;left:10px;background:rgba(255,255,255,.9);color:var(--brand);
+    font-size:10px;font-weight:600;padding:3px 9px;border-radius:999px}
+  .prod .meta{padding:11px 13px}
+  .prod .price{color:var(--brand);font-weight:700;font-size:17px;font-family:var(--serif)}
+  .prod .old{color:var(--faint);font-size:11px;text-decoration:line-through;margin-left:6px}
+  .prod .spec{font-size:11px;color:var(--muted);margin-top:4px}
+
+  /* room list */
+  .room{background:var(--card);border-radius:18px;overflow:hidden;margin-bottom:14px;box-shadow:0 6px 18px -13px rgba(60,40,25,.3)}
+  .room .img{height:130px;position:relative}
+  .room .img .pill{position:absolute;left:14px;top:14px;background:rgba(0,0,0,.4);color:#fff;font-size:11px;
+    padding:4px 12px;border-radius:999px;backdrop-filter:blur(4px)}
+  .room .meta{padding:14px 16px;display:flex;align-items:center;justify-content:space-between}
+  .room .n{font-family:var(--serif);font-size:17px;font-weight:600}
+  .room .d{font-size:12px;color:var(--muted);margin-top:3px}
+  .room .price{color:var(--brand);font-weight:700;font-size:18px;font-family:var(--serif)}
+  .room .price small{font-size:11px;color:var(--muted);font-weight:400}
+
+  /* date booking */
+  .datebar{display:flex;gap:10px;overflow-x:auto;padding:2px 0 8px}
+  .datebar::-webkit-scrollbar{display:none}
+  .dc{flex:0 0 auto;min-width:60px;padding:12px 6px;border-radius:14px;background:var(--card);border:1.5px solid var(--line);
+    text-align:center}
+  .dc.on{background:var(--brand);border-color:var(--brand);color:#fff}
+  .dc .l{font-size:11px;color:var(--muted)}.dc.on .l{color:rgba(255,255,255,.85)}
+  .dc .d{font-size:17px;font-weight:600;font-family:var(--serif);margin-top:2px}
+  .bkroom{background:var(--card);border-radius:20px;overflow:hidden;margin-bottom:18px;box-shadow:0 10px 26px -16px rgba(60,40,25,.4)}
+  .bk-hero{height:120px;position:relative;display:flex;flex-direction:column;justify-content:space-between;padding:14px 16px}
+  .bk-hero::after{content:"";position:absolute;inset:0;background:linear-gradient(transparent 42%,rgba(20,10,6,.42));pointer-events:none}
+  .bk-pill{position:relative;z-index:1;align-self:flex-start;background:rgba(0,0,0,.32);color:#fff;font-size:11px;
+    padding:5px 12px;border-radius:999px;backdrop-filter:blur(4px)}
+  .bk-herob{position:relative;z-index:1;display:flex;align-items:flex-end;justify-content:space-between}
+  .bk-name{color:#fff;font-family:var(--serif);font-size:22px;font-weight:600;text-shadow:0 2px 10px rgba(0,0,0,.45)}
+  .bk-hprice{color:#fff;font-family:var(--serif);font-size:21px;font-weight:600;text-shadow:0 2px 10px rgba(0,0,0,.45)}
+  .bk-hprice small{font-size:12px;opacity:.85;font-weight:400}
+  .bkroom .top{padding:16px;display:flex;align-items:center;justify-content:space-between}
+  .bkroom .slots{padding:0 16px 4px;display:flex;flex-wrap:wrap;gap:10px}
+  .slot{padding:9px 18px;border-radius:11px;border:1.5px solid var(--line);font-size:14px;background:#fff}
+  .slot.on{border-color:var(--brand);background:#FBF1F0;color:var(--brand);font-weight:600}
+  .slot.off{opacity:.35;text-decoration:line-through}
+  .tpick{display:flex;align-items:center;gap:12px;padding:16px 16px 4px}
+  .tf{flex:1;display:flex;flex-direction:column;gap:7px}
+  .tf .l{font-size:12px;color:var(--muted)}
+  .tf select{height:48px;border:1.5px solid var(--line);border-radius:12px;background:#fff;
+    padding:0 12px;font-size:16px;font-family:var(--serif);color:var(--ink);width:100%}
+  .tf select:focus{border-color:var(--brand);outline:none}
+  .dash{color:var(--muted);margin-top:28px;font-size:14px}
+  .quickrow{display:flex;align-items:center;gap:8px;padding:12px 16px 2px;flex-wrap:wrap}
+  .quickrow .ql{font-size:12px;color:var(--muted)}
+  .quickrow .qk{font-size:13px;color:var(--brand);background:#FBF1F0;border:1px solid #EBCBC8;
+    padding:6px 13px;border-radius:999px}
+  .taken{padding:10px 16px 0;font-size:12px;color:var(--amber)}
+  .booked{padding:14px 16px 0;display:flex;align-items:center;flex-wrap:wrap;gap:8px}
+  .booked .bk-t{font-size:12px;color:var(--amber);font-weight:600}
+  .booked .bk-r{font-size:12px;font-family:monospace;font-weight:600;color:var(--amber);
+    background:#FBF0DE;border:1px solid #F0DCB6;padding:4px 11px;border-radius:999px}
+  .booked.free{font-size:12px;color:var(--green)}
+  .bkroom .act{padding:14px 16px 16px}
+  .calc{font-size:13px;color:var(--muted);margin-bottom:11px}
+  .calc b{color:var(--brand);font-family:var(--serif);font-size:18px}
+  .bk-btn{width:100%;height:46px;border:none;border-radius:13px;background:var(--brand);color:#fff;font-size:15px;font-weight:600}
+  .bk-btn:disabled{background:#DCD3C8;color:#fff}
+
+  /* paycode */
+  .pc-view{min-height:100vh;background:linear-gradient(170deg,#7E211C,#9E2B25 60%,#872420);
+    display:flex;flex-direction:column;align-items:center;padding:calc(env(safe-area-inset-top) + 40px) 30px 40px}
+  .pc-view .t{color:#fff;font-family:var(--serif);font-size:22px;font-weight:600;letter-spacing:2px}
+  .pc-view .s{color:rgba(255,255,255,.8);font-size:13px;margin-top:8px}
+  .pc-card{background:#fff;border-radius:24px;padding:28px;margin-top:32px;width:100%;text-align:center;box-shadow:0 20px 50px -20px rgba(0,0,0,.4)}
+  .qr{width:190px;height:190px;margin:4px auto;border-radius:12px;position:relative;
+    background-image:repeating-linear-gradient(90deg,#23201C 0 7px,#fff 7px 14px),repeating-linear-gradient(0deg,#23201C 0 7px,transparent 7px 14px);
+    background-blend-mode:multiply;border:7px solid #fff;box-shadow:0 0 0 1px var(--line)}
+  .qr b{position:absolute;inset:0;margin:auto;width:44px;height:44px;background:var(--brand);color:#fff;
+    font-family:var(--serif);display:grid;place-items:center;border-radius:10px;border:4px solid #fff;font-size:22px}
+  .barcode{height:56px;margin:18px 6px 0;background:repeating-linear-gradient(90deg,#23201C 0 3px,#fff 3px 7px)}
+  .pc-code{font-family:monospace;letter-spacing:3px;color:var(--muted);margin-top:12px;font-size:14px}
+  .pc-cd{color:var(--brand);font-size:12px;margin-top:6px}
+  .pc-bal{margin-top:26px;width:100%;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.25);
+    border-radius:16px;padding:16px 20px;display:flex;justify-content:space-between;align-items:center;color:#fff}
+  .pc-bal b{font-family:var(--serif);font-size:22px}
+
+  /* profile */
+  .prof-head{display:flex;align-items:center;gap:16px;padding:6px 2px 20px}
+  .avatar{width:64px;height:64px;border-radius:20px;background:linear-gradient(135deg,var(--gold),var(--brand));
+    color:#fff;font-family:var(--serif);font-size:30px;display:grid;place-items:center}
+  .prof-head .nm{font-family:var(--serif);font-size:21px;font-weight:600}
+  .prof-head .mo{font-size:13px;color:var(--muted);margin-top:4px}
+  .pstats{display:flex;background:var(--card);border-radius:18px;overflow:hidden;box-shadow:var(--shadow)}
+  .pstats .s{flex:1;padding:18px 6px;text-align:center;border-right:1px solid var(--line)}
+  .pstats .s:last-child{border:none}
+  .pstats .n{font-family:var(--serif);font-size:22px;font-weight:600;color:var(--brand)}
+  .pstats .t{font-size:11px;color:var(--muted);margin-top:5px}
+  .res{display:flex;align-items:center;background:var(--card);border-radius:16px;padding:14px 16px;margin-bottom:12px;box-shadow:0 6px 16px -13px rgba(60,40,25,.3)}
+  .res .rd{width:58px;text-align:center}
+  .res .rd .rt{color:var(--brand);font-family:var(--serif);font-weight:600;font-size:18px}
+  .res .rd .rday{font-size:11px;color:var(--muted);margin-top:2px}
+  .res .ri{flex:1;padding-left:6px}
+  .res .ri .n{font-family:var(--serif);font-size:16px;font-weight:600}
+  .res .ri .d{font-size:12px;color:var(--muted);margin-top:3px}
+  .rst{font-size:11px;padding:5px 11px;border-radius:999px;font-weight:600}
+  .rst.WAITING{background:#FBF0DE;color:var(--amber)}.rst.VERIFIED{background:#EAF1E6;color:var(--green)}
+  .rst.USING{background:#FBF1F0;color:var(--brand)}.rst.CANCELLED{background:#EFEBE4;color:var(--muted)}
+  .txns{background:var(--card);border-radius:18px;overflow:hidden;box-shadow:var(--shadow)}
+  .tx{display:flex;align-items:center;gap:13px;padding:15px 16px;border-bottom:1px solid var(--line)}
+  .tx:last-child{border:none}
+  .tx .ic{width:42px;height:42px;border-radius:13px;background:#F6EEDF;color:var(--brand);display:grid;place-items:center;font-size:18px}
+  .tx .i{flex:1}.tx .t1{font-size:14px}.tx .t2{font-size:11px;color:var(--muted);margin-top:2px}
+  .tx .a{font-family:monospace;font-weight:600;font-size:15px}.tx .a.out{color:var(--ink)}.tx .a.in{color:var(--green)}
+  .empty{color:var(--muted);font-size:13px;text-align:center;padding:22px}
+
+  /* tabbar */
+  .tabbar{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;
+    height:calc(60px + env(safe-area-inset-bottom));padding:0 8px env(safe-area-inset-bottom);
+    background:rgba(255,255,255,.92);backdrop-filter:blur(12px);border-top:1px solid var(--line);
+    display:flex;box-shadow:0 -8px 24px -18px rgba(60,40,25,.4)}
+  .tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;
+    font-size:11px;color:var(--faint);font-weight:500}
+  .tab svg{width:23px;height:23px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+  .tab.on{color:var(--brand)}
+
+  .toast{position:fixed;bottom:96px;left:50%;transform:translateX(-50%);background:rgba(35,30,25,.92);color:#fff;
+    padding:11px 22px;border-radius:22px;font-size:14px;opacity:0;transition:.25s;z-index:99;pointer-events:none}
+  .toast.show{opacity:1}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ===== 首页 ===== -->
+  <section class="view on" id="v-home">
+    <div class="home-hero">
+      <div class="hh-top">
+        <div class="hh-brand"><span class="hh-seal">馬</span><span class="hh-name">八马茶业</span></div>
+        <span class="hh-loc">五缘湾旗舰店 ▾</span>
+      </div>
+      <div class="hh-mem">
+        <div>
+          <div class="hh-lbl">会员卡余额</div>
+          <div class="hh-amt"><small>¥</small><span id="mBal" class="mono">0.00</span></div>
+        </div>
+        <div class="hh-right">
+          <span class="hh-chip" id="mLv">会员</span>
+          <div class="hh-sub"><b id="mPoints">0</b> 积分 · <span id="mDisc">—</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="wrap">
+      <!-- 轮播图 -->
+      <div class="banner">
+        <div class="bscroll" id="bscroll">
+          <div class="slide" style="background:linear-gradient(135deg,#7E211C,#9E2B25)">
+            <span class="stag">新会员礼</span>
+            <div class="st">首次储值<br>加赠 20%</div>
+            <div class="ss">充值即享，余额可用于全场消费</div>
+            <span class="swm">礼</span>
+          </div>
+          <div class="slide" style="background:linear-gradient(135deg,#4d6047,#7d9268)">
+            <span class="stag">当季主推</span>
+            <div class="st">赛珍珠1000<br>浓香铁观音</div>
+            <div class="ss">会员专享 ¥478 · 原价 ¥520</div>
+            <span class="swm">茶</span>
+          </div>
+          <div class="slide" style="background:linear-gradient(135deg,#5b4b74,#9E2B25)">
+            <span class="stag">茶室预约</span>
+            <div class="st">静室品茗<br>会员 9 折起</div>
+            <div class="ss">按日期预定，到店扫码即扣</div>
+            <span class="swm">室</span>
+          </div>
+        </div>
+        <div class="dots" id="bdots"></div>
+      </div>
+
+      <!-- 活动精选（竖向列表） -->
+      <div class="sec"><span class="h">活动精选</span><span class="m">会员专享价</span></div>
+      <div class="plist" id="prods"></div>
+    </div>
+  </section>
+
+  <!-- ===== 茶室预定 ===== -->
+  <section class="view" id="v-rooms">
+    <div class="page-title">茶室预定<span class="sub">选择日期与时段，会员卡支付</span></div>
+    <div class="wrap" style="padding-top:0">
+      <div class="datebar" id="dates"></div>
+      <div id="bookList"></div>
+    </div>
+  </section>
+
+  <!-- ===== 付款码 ===== -->
+  <section class="view" id="v-paycode">
+    <div class="pc-view">
+      <div class="t">付款码</div>
+      <div class="s">向店员出示，扫码即扣会员卡</div>
+      <div class="pc-card">
+        <div class="qr"><b>八</b></div>
+        <div class="barcode"></div>
+        <div class="pc-code" id="pcCode">生成中…</div>
+        <div class="pc-cd" id="pcCd"></div>
+      </div>
+      <div class="pc-bal"><span>会员卡可用余额</span><b id="pcBal">¥0.00</b></div>
+    </div>
+  </section>
+
+  <!-- ===== 我的 ===== -->
+  <section class="view" id="v-profile">
+    <div class="page-title">个人中心</div>
+    <div class="wrap" style="padding-top:0">
+      <div class="prof-head">
+        <div class="avatar" id="pAv">会</div>
+        <div><div class="nm" id="pName">—</div><div class="mo" id="pMo">—</div></div>
+      </div>
+      <div class="pstats">
+        <div class="s"><div class="n mono" id="pBal">—</div><div class="t">卡内余额</div></div>
+        <div class="s"><div class="n mono" id="pRech">—</div><div class="t">累计充值</div></div>
+      </div>
+      <div class="sec"><span class="h">我的预定</span></div>
+      <div id="myRes"></div>
+      <div class="sec"><span class="h">消费记录</span></div>
+      <div class="txns" id="txns"></div>
+    </div>
+  </section>
+
+  <!-- ===== 底部导航 ===== -->
+  <nav class="tabbar">
+    <div class="tab on" data-v="home" onclick="go('home')">
+      <svg viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V20h14V9.5"/></svg>
+      <span>首页</span>
+    </div>
+    <div class="tab" data-v="rooms" onclick="go('rooms')">
+      <svg viewBox="0 0 24 24"><path d="M4 8h12v4.5A5.5 5.5 0 0 1 10.5 18h-1A5.5 5.5 0 0 1 4 12.5V8Z"/><path d="M16 9h2.2a2.3 2.3 0 0 1 0 4.6H16"/><path d="M7 3.2v1.6M10.5 3.2v1.6M13.5 3.2v1.6"/><path d="M3.5 21h13"/></svg>
+      <span>茶室</span>
+    </div>
+    <div class="tab" data-v="paycode" onclick="go('paycode')">
+      <svg viewBox="0 0 24 24"><path d="M4 8V5.5A1.5 1.5 0 0 1 5.5 4H8"/><path d="M20 8V5.5A1.5 1.5 0 0 0 18.5 4H16"/><path d="M4 16v2.5A1.5 1.5 0 0 0 5.5 20H8"/><path d="M20 16v2.5A1.5 1.5 0 0 1 18.5 20H16"/><path d="M4 12h16"/></svg>
+      <span>付款码</span>
+    </div>
+    <div class="tab" data-v="profile" onclick="go('profile')">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.6"/><path d="M5 20c0-3.6 3.1-6 7-6s7 2.4 7 6"/></svg>
+      <span>我的</span>
+    </div>
+  </nav>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const BASE='http://127.0.0.1:8080', MID=1
+let info={}, rooms=[], selDate='', pcTimer=null, reservedMap={}
+const grad=['linear-gradient(135deg,#7E211C,#9E2B25)','linear-gradient(135deg,#4d6047,#7d9268)','linear-gradient(135deg,#8a6f4e,#b79968)','linear-gradient(135deg,#5b4b74,#9E2B25)']
+
+function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1700)}
+async function api(p,method='GET',body){
+  const r=await fetch(BASE+p,{method,headers:{'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined})
+  const d=await r.json(); if(d.code!==200){toast(d.message||'请求失败');throw new Error(d.message)} return d.data
+}
+function fmt(n){return Number(n||0).toLocaleString('zh-CN',{minimumFractionDigits:2,maximumFractionDigits:2})}
+function n0(n){return Number(n||0).toFixed(0)}
+
+function go(v){
+  document.querySelectorAll('.view').forEach(s=>s.classList.remove('on'))
+  document.getElementById('v-'+v).classList.add('on')
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('on',t.dataset.v===v))
+  window.scrollTo(0,0)
+  if(v==='rooms') openRooms()
+  if(v==='paycode') genPaycode()
+  if(v==='profile') loadProfile()
+}
+
+/* 首页 */
+async function loadHome(){
+  info=await api('/api/customer/'+MID)
+  document.getElementById('mBal').textContent=fmt(info.balance)
+  document.getElementById('mLv').textContent=info.levelText
+  document.getElementById('mPoints').textContent=info.points
+  document.getElementById('mDisc').textContent='享 '+(info.discount/10)+' 折'
+  api('/api/customer/store').then(s=>{if(s&&s.name)document.querySelector('.hh-loc').textContent=s.name+' ▾'}).catch(()=>{})
+  loadProds()
+}
+async function loadProds(){
+  const ps=await api('/api/customer/products')
+  document.getElementById('prods').innerHTML=ps.map((p,i)=>`
+    <div class="prow">
+      <div class="th" style="background:${grad[i%grad.length]}"><span class="bd">活动</span><span class="tc">${(p.category||'茶').charAt(0)}</span></div>
+      <div class="pin">
+        <div class="pn">${p.name}</div>
+        <div class="ps">${p.spec||''}</div>
+        <div class="pp"><span class="price">¥${n0(p.memberPrice)}</span><span class="old">¥${n0(p.retailPrice)}</span></div>
+      </div>
+      <div class="buy" onclick="toast('已加入意向，到店出示付款码结算')">购买</div>
+    </div>`).join('')
+}
+
+/* 轮播 */
+function initBanner(){
+  const sc=document.getElementById('bscroll'), dots=document.getElementById('bdots')
+  if(!sc) return
+  const n=sc.children.length
+  dots.innerHTML=Array.from({length:n},(_,i)=>`<span class="dot ${i===0?'on':''}"></span>`).join('')
+  let idx=0
+  const setDot=i=>{idx=i;[...dots.children].forEach((d,j)=>d.classList.toggle('on',j===i))}
+  sc.addEventListener('scroll',()=>{const w=sc.clientWidth||1;const i=Math.round(sc.scrollLeft/w);if(i!==idx)setDot(i)})
+  if(window._bTimer)clearInterval(window._bTimer)
+  window._bTimer=setInterval(()=>{const w=sc.clientWidth;if(!w)return;const nx=(idx+1)%n;sc.scrollTo({left:nx*w,behavior:'smooth'})},3500)
+}
+/* 茶室预定 */
+function fmtD(d){const p=n=>n<10?'0'+n:''+n;return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())}
+async function openRooms(){
+  if(!rooms.length) rooms=await api('/api/customer/rooms')
+  const wk=['周日','周一','周二','周三','周四','周五','周六'],today=new Date(),chips=[]
+  for(let i=0;i<5;i++){const d=new Date(today);d.setDate(today.getDate()+i);const ds=fmtD(d)
+    chips.push(`<div class="dc ${i===0?'on':''}" data-d="${ds}" onclick="setDate('${ds}')"><div class="l">${i===0?'今天':i===1?'明天':wk[d.getDay()]}</div><div class="d">${d.getMonth()+1}/${d.getDate()}</div></div>`)}
+  document.getElementById('dates').innerHTML=chips.join('')
+  if(!selDate) selDate=fmtD(today)
+  else document.querySelectorAll('.dc').forEach(c=>c.classList.toggle('on',c.dataset.d===selDate))
+  renderBook()
+}
+function setDate(ds){selDate=ds;document.querySelectorAll('.dc').forEach(c=>c.classList.toggle('on',c.dataset.d===ds));renderBook()}
+const OPEN='08:00', CLOSE='22:00'
+function toMin(t){const[a,b]=t.split(':').map(Number);return a*60+b}
+function pad(n){return String(n).padStart(2,'0')}
+function toStr(mm){return pad(Math.floor(mm/60))+':'+pad(mm%60)}
+// 24 小时制显示（如 08:00、14:30、22:00），无 AM/PM，最清晰
+function zhTime(t){return t}
+// 生成中文时间下拉选项
+function timeOptions(from,to,sel){
+  let opts=''
+  for(let mm=toMin(from);mm<=toMin(to);mm+=30){
+    const t=toStr(mm)
+    opts+=`<option value="${t}" ${t===sel?'selected':''}>${zhTime(t)}</option>`
+  }
+  return opts
+}
+async function renderBook(){
+  const box=document.getElementById('bookList');box.innerHTML='<div class="empty">加载中…</div>'
+  reservedMap={}
+  const parts=[]
+  for(let i=0;i<rooms.length;i++){
+    const r=rooms[i]
+    const rv=await api(`/api/customer/rooms/${r.id}/reserved?date=${selDate}`)
+    reservedMap[r.id]=rv.map(x=>({s:toMin(x.start),e:toMin(x.end),label:x.start+'–'+x.end}))
+    const booked = rv.length
+      ? `<div class="booked"><span class="bk-t">已被预约</span>${rv.map(x=>`<span class="bk-r">${x.start}–${x.end}</span>`).join('')}</div>`
+      : `<div class="booked free">✓ 该日暂无预约，可自由选择时间</div>`
+    const quick=['13:00','15:00','17:00','19:00'].map(t=>`<span class="qk" onclick="setStart(${r.id},'${t}')">${t}</span>`).join('')
+    parts.push(`<div class="bkroom">
+      <div class="bk-hero" style="background:${grad[i%grad.length]}">
+        <span class="bk-pill">${r.capacity} · ${r.roomType}</span>
+        <div class="bk-herob"><span class="bk-name">${r.name}</span>
+          <span class="bk-hprice">¥${n0(r.priceHour)}<small>/时</small></span></div>
+      </div>
+      ${booked}
+      <div class="tpick">
+        <div class="tf"><span class="l">开始时间</span><select id="st_${r.id}" onchange="calc(${r.id})">${timeOptions('08:00','21:30','15:00')}</select></div>
+        <span class="dash">至</span>
+        <div class="tf"><span class="l">结束时间</span><select id="et_${r.id}" onchange="calc(${r.id})">${timeOptions('08:30','22:00','17:00')}</select></div>
+      </div>
+      <div class="quickrow"><span class="ql">快捷</span>${quick}</div>
+      <div class="act"><div class="calc" id="cc_${r.id}">—</div>
+        <button class="bk-btn" id="bk_${r.id}" onclick="reserve(${r.id})">确认预定</button></div>
+    </div>`)
+  }
+  box.innerHTML=parts.join('')
+  rooms.forEach(r=>calc(r.id))
+}
+function setStart(id,t){
+  document.getElementById('st_'+id).value=t
+  const e=Math.min(toMin(t)+120, toMin(CLOSE))
+  document.getElementById('et_'+id).value=toStr(e)
+  calc(id)
+}
+function calc(id){
+  const r=rooms.find(x=>x.id===id)
+  const st=document.getElementById('st_'+id).value, et=document.getElementById('et_'+id).value
+  const cc=document.getElementById('cc_'+id), bk=document.getElementById('bk_'+id)
+  const s=toMin(st), e=toMin(et)
+  if(e<=s){cc.textContent='结束时间需晚于开始时间';bk.disabled=true;return}
+  const clash=(reservedMap[id]||[]).find(x=>s<x.e && e>x.s)
+  if(clash){cc.innerHTML=`与已有预约 <b style="color:var(--amber)">${clash.label}</b> 冲突，请调整时间`;bk.disabled=true;return}
+  const hours=Math.round((e-s)/60*10)/10
+  cc.innerHTML=`${st} 至 ${et} · 共 ${hours} 小时 · <b>¥${n0(r.priceHour*hours)}</b>`
+  bk.disabled=false
+}
+async function reserve(id){
+  const st=document.getElementById('st_'+id).value, et=document.getElementById('et_'+id).value
+  const s=toMin(st), e=toMin(et); if(e<=s) return
+  const hours=Math.round((e-s)/60*10)/10; const r=rooms.find(x=>x.id===id)
+  try{
+    await api('/api/customer/reserve','POST',{memberId:MID,roomId:id,reserveDate:selDate,startTime:st,hours})
+    toast('预定成功：'+r.name+' '+zhTime(st)+'至'+zhTime(et))
+    renderBook()
+  }catch(e){}
+}
+
+/* 付款码 */
+async function genPaycode(){
+  document.getElementById('pcBal').textContent='¥'+fmt(info.balance)
+  try{
+    const r=await api('/api/customer/'+MID+'/paycode','POST')
+    document.getElementById('pcCode').textContent=r.payCode
+    let cd=60;document.getElementById('pcCd').textContent=cd+'s 后自动刷新'
+    if(pcTimer)clearInterval(pcTimer)
+    pcTimer=setInterval(()=>{cd--;document.getElementById('pcCd').textContent=cd+'s 后自动刷新';if(cd<=0)genPaycode()},1000)
+  }catch(e){}
+}
+
+/* 我的 */
+async function loadProfile(){
+  document.getElementById('pAv').textContent=(info.name||'会').charAt(0)
+  document.getElementById('pName').textContent=info.name
+  document.getElementById('pMo').textContent=info.phone+' · '+info.levelText
+  document.getElementById('pBal').textContent=fmt(info.balance)
+  document.getElementById('pRech').textContent=n0(info.totalRecharge)
+  // 我的预定
+  const rs=await api('/api/customer/'+MID+'/reservations')
+  document.getElementById('myRes').innerHTML=rs.length?rs.map(r=>`
+    <div class="res"><div class="rd"><div class="rt">${r.startTime}</div><div class="rday">${(r.reserveDate||'').slice(5)}</div></div>
+    <div class="ri"><div class="n">${r.roomName}</div><div class="d">${r.roomType||''} · ${r.hours}小时 · ¥${n0(r.amount)}</div></div>
+    <div class="rst ${r.status}">${r.statusText}</div></div>`).join(''):'<div class="empty">暂无预定</div>'
+  // 消费记录
+  const tx=await api('/api/customer/'+MID+'/records')
+  const map={RECHARGE:['💳','会员卡储值','in'],GIFT:['🎁','储值赠送','in'],CONSUME:['🛍','扫码消费','out'],REFUND:['↩','退款','in']}
+  document.getElementById('txns').innerHTML=tx.length?tx.map(t=>{const m=map[t.type]||['·',t.type,'out']
+    return `<div class="tx"><div class="ic">${m[0]}</div><div class="i"><div class="t1">${m[1]}</div>
+    <div class="t2">${(t.createTime||'').replace('T',' ').slice(5,16)} · 余额 ¥${fmt(t.balanceAfter)}</div></div>
+    <div class="a ${m[2]}">${m[2]==='in'?'+':'-'}¥${fmt(t.amount)}</div></div>`}).join(''):'<div class="empty">暂无记录</div>'
+}
+
+loadHome()
+initBanner()
+</script>
+</body>
+</html>

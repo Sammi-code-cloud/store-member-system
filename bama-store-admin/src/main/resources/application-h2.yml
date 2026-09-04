@@ -1,0 +1,19 @@
+# H2 内嵌数据库启动档：无需安装 MySQL，用于快速演示
+# 启动方式：--spring.profiles.active=h2
+spring:
+  datasource:
+    driver-class-name: org.h2.Driver
+    url: jdbc:h2:mem:bama;DB_CLOSE_DELAY=-1;MODE=MySQL;DATABASE_TO_LOWER=TRUE
+    username: sa
+    password: ""
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:db/schema-h2.sql
+      data-locations: classpath:db/data-h2.sql
+      encoding: UTF-8
+      continue-on-error: false
+  h2:
+    console:
+      enabled: true
+      path: /h2-console

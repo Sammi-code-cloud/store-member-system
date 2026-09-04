@@ -1,0 +1,24 @@
+{
+  "name": "bama-store-miniapp",
+  "version": "1.0.0",
+  "description": "八马门店系统小程序（顾客端 + 员工端）· uni-app Vue3",
+  "scripts": {
+    "dev:h5": "uni",
+    "dev:mp-weixin": "uni -p mp-weixin",
+    "build:h5": "uni build",
+    "build:mp-weixin": "uni build -p mp-weixin"
+  },
+  "dependencies": {
+    "@dcloudio/uni-app": "3.0.0-alpha-4030620241128001",
+    "@dcloudio/uni-components": "3.0.0-alpha-4030620241128001",
+    "@dcloudio/uni-h5": "3.0.0-alpha-4030620241128001",
+    "@dcloudio/uni-mp-weixin": "3.0.0-alpha-4030620241128001",
+    "vue": "^3.4.21"
+  },
+  "devDependencies": {
+    "@dcloudio/uni-cli-shared": "3.0.0-alpha-4030620241128001",
+    "@dcloudio/vite-plugin-uni": "3.0.0-alpha-4030620241128001",
+    "vite": "^5.2.8"
+  },
+  "//": "推荐用 HBuilderX 直接导入本目录运行到微信开发者工具，无需 npm。若用 CLI，版本号可能需按官方模板更新：npx degit dcloudio/uni-preset-vue#vite"
+}

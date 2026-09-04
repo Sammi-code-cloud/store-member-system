@@ -1,0 +1,18 @@
+# ============================================================
+# 本地配置模板（本文件入库，仅含占位符，不得填写真实密码）
+# 用法：复制本文件为 application-local.yml，填入真实值后使用
+#      cp application-local.yml.example application-local.yml
+# 启动：mvn spring-boot:run -Dspring-boot.run.profiles=local
+# ============================================================
+spring:
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    # 数据库地址：向项目负责人或 DBA 索取
+    url: jdbc:mysql://<DB_HOST>:<DB_PORT>/<DB_NAME>?createDatabaseIfNotExist=true&useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+    username: <DB_USER>
+    password: '<DB_PASSWORD>'
+
+bama:
+  jwt:
+    # 随机长密钥，不少于 32 字节；生成示例：openssl rand -base64 48
+    secret: <JWT_SECRET>

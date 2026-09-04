@@ -1,0 +1,55 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: bama-store-admin
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    # 数据库连接信息一律通过 application-local.yml 或环境变量注入，禁止在本文件写明文
+    # 本地开发：复制 application-local.yml.example 为 application-local.yml 并填真实值，
+    #          启动时加 --spring.profiles.active=local
+    # createDatabaseIfNotExist 自动创建目标库
+    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:ysm}?createDatabaseIfNotExist=true&useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+    username: ${DB_USER:root}
+    password: ${DB_PASSWORD:}
+  # 首次启动自动执行建表与初始化数据脚本（脚本均为幂等，可重复执行）
+  # 生产环境请改为 never，改由 DBA 手动执行
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:db/schema.sql
+      data-locations: classpath:db/data.sql
+      encoding: UTF-8
+      continue-on-error: false
+
+# MyBatis-Plus 配置
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+    # 开发期打印 SQL，生产可关闭
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  global-config:
+    db-config:
+      id-type: auto
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+
+# JWT 配置
+bama:
+  jwt:
+    # 默认值仅供本地开发临时启动使用，正式环境必须通过 application-local.yml
+    # 或环境变量 JWT_SECRET 覆盖为随机长密钥（HMAC-SHA 要求不少于 32 字节）
+    secret: ${JWT_SECRET:bama-store-admin-dev-only-secret-must-be-overridden-0123456789abcdef}
+    # token 有效期（毫秒），默认 12 小时
+    expire: ${JWT_EXPIRE:43200000}
+    header: Authorization
+    prefix: "Bearer "
+  # 会员付款码令牌有效期（秒）
+  paycode:
+    expire-seconds: 60
+
+logging:
+  level:
+    com.bama.store: debug

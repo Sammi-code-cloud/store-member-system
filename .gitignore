@@ -1,0 +1,63 @@
+# ==================== 敏感信息（严禁提交） ====================
+# 数据库明文账号密码原始记录
+mysql.txt
+# 配置文件备份档（可能残留明文密码）
+*.bak
+*.bak.*
+application.yml.bak*
+# 本地真实配置档：含数据库密码、JWT 密钥
+application-local.yml
+application-local.yaml
+application-prod.yml
+application-prod.yaml
+# 环境变量文件（保留 .env.example 模板）
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# ==================== Java / Maven 编译产物 ====================
+# 注意：target/classes 下会生成 application.yml 副本，必须忽略
+target/
+build/
+*.class
+*.jar
+*.war
+!.mvn/wrapper/maven-wrapper.jar
+.mvn/timing.properties
+
+# ==================== 日志与运行产物 ====================
+*.log
+logs/
+*.log.*
+*.pid
+*.hprof
+
+# ==================== 前端依赖与构建产物 ====================
+node_modules/
+dist/
+unpackage/
+.hbuilderx/
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+package-lock.json.bak
+
+# ==================== IDE 与系统文件 ====================
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+.settings/
+.project
+.classpath
+.DS_Store
+Thumbs.db
+
+# ==================== 其他 ====================
+*.bak
+*.tmp
+*.swp
+八马门店系统-开发计划.md
+八马门店系统-产品界面图.html

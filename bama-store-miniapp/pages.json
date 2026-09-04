@@ -1,0 +1,54 @@
+{
+  "pages": [
+    {
+      "path": "pages/role/select",
+      "style": { "navigationBarTitleText": "八马门店", "navigationStyle": "custom" }
+    },
+    {
+      "path": "pages/customer/home",
+      "style": { "navigationBarTitleText": "八马茶业", "navigationStyle": "custom" }
+    },
+    {
+      "path": "pages/customer/paycode",
+      "style": { "navigationBarTitleText": "付款码" }
+    },
+    {
+      "path": "pages/customer/rooms",
+      "style": { "navigationBarTitleText": "茶室预定" }
+    },
+    {
+      "path": "pages/customer/profile",
+      "style": { "navigationBarTitleText": "个人中心" }
+    },
+    {
+      "path": "pages/staff/login",
+      "style": { "navigationBarTitleText": "员工登录" }
+    },
+    {
+      "path": "pages/staff/workbench",
+      "style": { "navigationBarTitleText": "员工工作台", "navigationStyle": "custom" }
+    },
+    {
+      "path": "pages/staff/scan",
+      "style": { "navigationBarTitleText": "扫码收款" }
+    },
+    {
+      "path": "pages/staff/charge",
+      "style": { "navigationBarTitleText": "收款确认" }
+    },
+    {
+      "path": "pages/staff/recharge",
+      "style": { "navigationBarTitleText": "会员储值" }
+    },
+    {
+      "path": "pages/staff/dashboard",
+      "style": { "navigationBarTitleText": "数据概览" }
+    }
+  ],
+  "globalStyle": {
+    "navigationBarTextStyle": "white",
+    "navigationBarTitleText": "八马门店",
+    "navigationBarBackgroundColor": "#9E2B25",
+    "backgroundColor": "#F3EDE4"
+  }
+}

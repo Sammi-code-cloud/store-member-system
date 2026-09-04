@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>八马门店 · 员工端实机演示</title>
+<style>
+  :root{--brand:#9E2B25;--brand-deep:#7E211C;--gold:#B8873C;--green:#4F6B47;
+    --ink:#241C19;--muted:#7A6E64;--line:#E6DCCE;--porcelain:#F3EDE4;}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--porcelain);color:var(--ink);
+    font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+    display:flex;justify-content:center;min-height:100vh}
+  .phone{width:100%;max-width:430px;background:var(--porcelain);min-height:100vh;position:relative;overflow:hidden}
+  .brandbar{background:linear-gradient(135deg,var(--brand),var(--brand-deep));color:#fff;
+    padding:26px 22px 30px;border-radius:0 0 26px 26px}
+  .brandbar .top{display:flex;align-items:center;gap:10px}
+  .seal{width:38px;height:38px;border-radius:11px;background:rgba(255,255,255,.16);
+    display:grid;place-items:center;font-family:serif;font-size:22px}
+  .brandbar h1{font-size:20px;font-weight:600}
+  .brandbar .sub{font-size:12px;opacity:.8;margin-top:2px}
+  .wrap{padding:20px}
+  .card{background:#fff;border:1px solid var(--line);border-radius:18px;padding:18px;margin-bottom:16px}
+  .field{margin-bottom:14px}
+  .field label{font-size:13px;color:var(--muted);display:block;margin-bottom:6px}
+  input{width:100%;height:46px;background:var(--porcelain);border:1px solid var(--line);
+    border-radius:12px;padding:0 14px;font-size:15px;color:var(--ink)}
+  .btn{background:var(--brand);color:#fff;border:none;width:100%;height:50px;border-radius:14px;
+    font-size:16px;font-weight:600;margin-top:6px}
+  .btn:active{opacity:.85}
+  .btn.ghost{background:#fff;color:var(--brand);border:1px solid var(--brand)}
+  .btn.small{height:40px;font-size:14px;width:auto;padding:0 18px;margin:0}
+  .hint{text-align:center;font-size:12px;color:var(--muted);margin-top:14px;line-height:1.8}
+  .hint b{color:var(--brand)}
+  .hidden{display:none}
+  .kpis{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .kpi{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px}
+  .kpi .l{font-size:12px;color:var(--muted)}
+  .kpi .v{font-size:24px;font-weight:600;margin-top:6px;font-variant-numeric:tabular-nums}
+  .row-head{display:flex;justify-content:space-between;align-items:center;margin:6px 2px 12px}
+  .row-head .h{font-size:16px;font-weight:600}
+  .paycode{text-align:center;padding:8px 0}
+  .qr{width:150px;height:150px;margin:6px auto;border-radius:10px;position:relative;
+    background-image:repeating-linear-gradient(90deg,#241C19 0 6px,#fff 6px 12px),
+      repeating-linear-gradient(0deg,#241C19 0 6px,transparent 6px 12px);
+    background-blend-mode:multiply;border:6px solid #fff;box-shadow:0 0 0 1px var(--line)}
+  .qr span{position:absolute;inset:0;margin:auto;width:34px;height:34px;background:var(--brand);
+    color:#fff;font-family:serif;display:grid;place-items:center;border-radius:8px;border:3px solid #fff}
+  .code{font-family:monospace;letter-spacing:2px;color:var(--muted);margin-top:8px;font-size:13px}
+  .member{display:flex;align-items:center;gap:12px}
+  .avatar{width:48px;height:48px;border-radius:14px;background:linear-gradient(135deg,var(--gold),var(--brand));
+    color:#fff;font-family:serif;font-size:22px;display:grid;place-items:center}
+  .member .nm{font-size:17px;font-weight:600}
+  .member .bl{font-size:13px;color:var(--muted);margin-top:2px}
+  .member .bl b{color:var(--green);font-family:monospace}
+  .item{display:flex;gap:8px;align-items:center;padding:8px 0;border-bottom:1px dashed var(--line)}
+  .item input{height:38px}
+  .item .nm{flex:2}.item .pr{flex:1;text-align:right}.item .qt{width:52px;text-align:center}
+  .amount{display:flex;justify-content:space-between;align-items:baseline;margin-top:14px}
+  .amount .big{color:var(--brand);font-size:30px;font-weight:600;font-variant-numeric:tabular-nums}
+  .result{text-align:center;padding:16px 0}
+  .result .ok{width:64px;height:64px;border-radius:50%;background:var(--green);color:#fff;
+    display:grid;place-items:center;font-size:34px;margin:0 auto 12px}
+  .result .amt{font-size:32px;font-weight:600;color:var(--green);font-variant-numeric:tabular-nums}
+  .result .info{background:var(--porcelain);border-radius:12px;padding:12px 16px;margin-top:16px;text-align:left;font-size:13px}
+  .result .info div{display:flex;justify-content:space-between;padding:4px 0}
+  .toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.8);
+    color:#fff;padding:10px 20px;border-radius:20px;font-size:14px;z-index:99;opacity:0;transition:.3s}
+  .toast.show{opacity:1}
+  .badge{display:inline-block;background:#FBF2F1;color:var(--brand);border:1px solid #E9C9C6;
+    font-size:11px;padding:2px 10px;border-radius:999px;margin-left:6px}
+  .steps{display:flex;gap:6px;margin-bottom:14px}
+  .step{flex:1;height:4px;border-radius:2px;background:var(--line)}
+  .step.on{background:var(--brand)}
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="brandbar">
+    <div class="top"><div class="seal">馬</div>
+      <div><h1>八马员工端</h1><div class="sub">扫码收款 · 实机演示（真实接口）</div></div>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <!-- 登录 -->
+    <div id="loginView">
+      <div class="card">
+        <div class="field"><label>手机号</label><input id="phone" value="13800000001"></div>
+        <div class="field"><label>密码</label><input id="password" type="password" value="123456"></div>
+        <button class="btn" onclick="doLogin()">登 录</button>
+      </div>
+      <div class="hint">演示账号：店长 <b>13800000000 / admin123</b><br>收银员 <b>13800000001 / 123456</b></div>
+    </div>
+
+    <!-- 工作台 -->
+    <div id="appView" class="hidden">
+      <div class="card">
+        <div class="row-head"><span class="h">数据概览</span>
+          <span style="font-size:12px;color:var(--muted)" id="who"></span></div>
+        <div class="kpis">
+          <div class="kpi"><div class="l">会员卡余额总额</div><div class="v" id="k1">-</div></div>
+          <div class="kpi"><div class="l">今日消费金额</div><div class="v" id="k2">-</div></div>
+          <div class="kpi"><div class="l">会员总数</div><div class="v" id="k3">-</div></div>
+          <div class="kpi"><div class="l">货品总数</div><div class="v" id="k4">-</div></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="steps"><div class="step on" id="s1"></div><div class="step" id="s2"></div><div class="step" id="s3"></div></div>
+
+        <!-- 步骤1：生成/输入付款码 -->
+        <div id="scanStep">
+          <div class="row-head"><span class="h">① 扫码收款</span></div>
+          <div class="paycode">
+            <div class="qr"><span>八</span></div>
+            <div class="code" id="pcText">点击下方按钮，模拟顾客出示付款码</div>
+          </div>
+          <button class="btn ghost" onclick="genPaycode()" style="margin-bottom:10px">模拟顾客付款码（会员1）</button>
+          <div class="field" style="margin-top:6px"><label>付款码</label><input id="payCode" placeholder="扫码或粘贴付款码"></div>
+          <button class="btn" onclick="resolveCode()">识别会员</button>
+        </div>
+
+        <!-- 步骤2：确认扣款 -->
+        <div id="chargeStep" class="hidden">
+          <div class="row-head"><span class="h">② 收款确认</span></div>
+          <div class="member">
+            <div class="avatar" id="mAvatar">会</div>
+            <div><div class="nm" id="mName">-<span class="badge" id="mLevel"></span></div>
+              <div class="bl">会员卡余额 <b id="mBalance">¥-</b></div></div>
+          </div>
+          <div style="margin-top:14px">
+            <div class="item"><input class="nm" value="观山茶室 2小时" id="i1n"><input class="pr" value="188" id="i1p"><span>×</span><input class="qt" value="2" id="i1q"></div>
+            <div class="item"><input class="nm" value="大红袍 125g" id="i2n"><input class="pr" value="288" id="i2p"><span>×</span><input class="qt" value="1" id="i2q"></div>
+          </div>
+          <div class="amount"><span style="font-size:13px;color:var(--muted)" id="discLabel">应扣金额</span>
+            <span class="big" id="payEst">¥0.00</span></div>
+          <button class="btn" style="margin-top:14px" onclick="doCharge()">确认扣款 · 扣会员卡</button>
+        </div>
+
+        <!-- 步骤3：结果 -->
+        <div id="doneStep" class="hidden">
+          <div class="result">
+            <div class="ok">✓</div>
+            <div style="color:var(--muted);font-size:14px">扣款成功</div>
+            <div class="amt" id="rAmt">-¥0.00</div>
+            <div class="info">
+              <div><span style="color:var(--muted)">会员</span><span id="rMember">-</span></div>
+              <div><span style="color:var(--muted)">卡内余额</span><span id="rBalance">-</span></div>
+              <div><span style="color:var(--muted)">收款员工</span><span id="rStaff">-</span></div>
+              <div><span style="color:var(--muted)">单号</span><span id="rOrder" style="font-family:monospace;font-size:12px">-</span></div>
+            </div>
+            <button class="btn" style="margin-top:18px" onclick="reset()">完成 · 继续收款</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 会员储值：员工输入用户实际充值金额 -->
+      <div class="card">
+        <div class="row-head"><span class="h">会员储值</span>
+          <span style="font-size:12px;color:var(--muted)">员工代充</span></div>
+        <div class="field"><label>会员 ID</label><input id="rcMember" value="1"></div>
+        <div class="field"><label>充值金额（元）</label><input id="rcAmount" type="number" placeholder="用户实际充值金额，如 500"></div>
+        <div class="field"><label>赠送金额（元 · 选填）</label><input id="rcGift" type="number" placeholder="无则留空"></div>
+        <button class="btn" onclick="doRecharge()">确认储值</button>
+      </div>
+
+      <!-- 茶室管理：后台维护有哪些茶室 -->
+      <div class="card">
+        <div class="row-head"><span class="h">茶室管理</span>
+          <span style="font-size:12px;color:var(--muted)">后台维护 · 需店长</span></div>
+        <div id="roomMgtList"></div>
+        <div style="display:flex;gap:8px;margin-top:12px">
+          <input id="rmName" placeholder="茶室名称" style="flex:2">
+          <input id="rmCap" placeholder="人数 如4-6人" style="flex:1">
+        </div>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <input id="rmType" placeholder="类型 包厢/卡座" style="flex:1">
+          <input id="rmPrice" type="number" placeholder="每小时价" style="flex:1">
+        </div>
+        <button class="btn" style="margin-top:12px" onclick="addRoom()">新增茶室</button>
+      </div>
+
+      <!-- 门店设置：可修改顾客端展示的门店名与地址 -->
+      <div class="card">
+        <div class="row-head"><span class="h">门店设置</span>
+          <span style="font-size:12px;color:var(--muted)">需店长</span></div>
+        <div class="field"><label>门店名称（顾客端首页显示）</label><input id="stName" placeholder="如 五缘湾旗舰店"></div>
+        <div class="field"><label>门店地址</label><input id="stAddr" placeholder="门店详细地址"></div>
+        <div class="field"><label>联系电话</label><input id="stPhone" placeholder="门店电话"></div>
+        <button class="btn" onclick="saveStore()">保存门店信息</button>
+      </div>
+
+      <div class="hint">数据来自真实后端（<b id="apiBase"></b>）与公司测试库 MySQL</div>
+      <button class="btn ghost" style="margin-top:8px" onclick="logout()">退出登录</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const BASE = 'http://127.0.0.1:8080'
+let token = '', staff = {}, member = null
+document.getElementById('apiBase').textContent = BASE
+
+function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),1800)}
+
+async function api(path, method='GET', body){
+  const res = await fetch(BASE+path,{method,
+    headers:{'Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{})},
+    body: body?JSON.stringify(body):undefined})
+  const data = await res.json()
+  if(data.code!==200){ toast(data.message||'请求失败'); throw new Error(data.message) }
+  return data.data
+}
+
+async function doLogin(){
+  try{
+    const r = await api('/api/auth/login','POST',{
+      phone:document.getElementById('phone').value, password:document.getElementById('password').value})
+    token=r.token; staff=r
+    document.getElementById('loginView').classList.add('hidden')
+    document.getElementById('appView').classList.remove('hidden')
+    document.getElementById('who').textContent = r.name+' · '+r.permissions.length+'项权限'
+    loadDash()
+    loadRoomsMgt()
+    loadStore()
+  }catch(e){}
+}
+
+async function loadDash(){
+  try{
+    const d = await api('/api/dashboard')
+    document.getElementById('k1').textContent = '¥'+Number(d.totalBalance||0).toLocaleString()
+    document.getElementById('k2').textContent = '¥'+Number(d.todayConsumeAmount||0).toLocaleString()
+    document.getElementById('k3').textContent = d.memberCount||0
+    document.getElementById('k4').textContent = d.productCount||0
+  }catch(e){}
+}
+
+async function genPaycode(){
+  try{
+    const r = await api('/api/paycode/generate?memberId=1','POST')
+    document.getElementById('payCode').value = r.payCode
+    document.getElementById('pcText').textContent = r.payCode
+    toast('付款码已生成（60秒有效）')
+  }catch(e){}
+}
+
+async function resolveCode(){
+  const code = document.getElementById('payCode').value.trim()
+  if(!code){ toast('请先生成或输入付款码'); return }
+  try{
+    member = await api('/api/charge/resolve?payCode='+encodeURIComponent(code),'POST')
+    document.getElementById('mAvatar').textContent = (member.name||'会').charAt(0)
+    document.getElementById('mName').firstChild.textContent = member.name
+    const lv={NORMAL:'普通',GOLD:'金卡',BLACK_GOLD:'黑金'}[member.level]||''
+    document.getElementById('mLevel').textContent = lv
+    document.getElementById('mBalance').textContent = '¥'+Number(member.balance).toFixed(2)
+    document.getElementById('discLabel').textContent = '应扣金额（'+(member.discount/10)+' 折后）'
+    document.getElementById('scanStep').classList.add('hidden')
+    document.getElementById('chargeStep').classList.remove('hidden')
+    document.getElementById('s2').classList.add('on')
+    calcPay()
+  }catch(e){}
+}
+
+function items(){
+  return [
+    {itemType:'ROOM',itemName:i('i1n'),price:+i('i1p'),quantity:+i('i1q')},
+    {itemType:'PRODUCT',itemName:i('i2n'),price:+i('i2p'),quantity:+i('i2q')}
+  ]
+}
+function i(id){return document.getElementById(id).value}
+function calcPay(){
+  const origin = items().reduce((s,x)=>s+x.price*x.quantity,0)
+  const pay = origin*(member.discount||100)/100
+  document.getElementById('payEst').textContent = '¥'+pay.toFixed(2)
+}
+document.addEventListener('input',e=>{ if(member && e.target.closest('#chargeStep')) calcPay() })
+
+async function doCharge(){
+  try{
+    const r = await api('/api/charge/confirm','POST',{memberId:member.memberId,items:items(),remark:'H5演示扫码消费'})
+    document.getElementById('rAmt').textContent = '-¥'+Number(r.payAmount).toFixed(2)
+    document.getElementById('rMember').textContent = r.memberName
+    document.getElementById('rBalance').textContent = '¥'+Number(r.balanceAfter).toFixed(2)
+    document.getElementById('rStaff').textContent = r.staffName
+    document.getElementById('rOrder').textContent = r.orderNo
+    document.getElementById('chargeStep').classList.add('hidden')
+    document.getElementById('doneStep').classList.remove('hidden')
+    document.getElementById('s3').classList.add('on')
+    loadDash()
+  }catch(e){}
+}
+
+function reset(){
+  member=null
+  document.getElementById('doneStep').classList.add('hidden')
+  document.getElementById('chargeStep').classList.add('hidden')
+  document.getElementById('scanStep').classList.remove('hidden')
+  document.getElementById('s2').classList.remove('on')
+  document.getElementById('s3').classList.remove('on')
+  document.getElementById('payCode').value=''
+  document.getElementById('pcText').textContent='点击下方按钮，模拟顾客出示付款码'
+}
+async function loadStore(){
+  try{
+    const s = await api('/api/store/'+(staff.storeId||1))
+    document.getElementById('stName').value = s.name||''
+    document.getElementById('stAddr').value = s.address||''
+    document.getElementById('stPhone').value = s.phone||''
+  }catch(e){}
+}
+async function saveStore(){
+  const name=document.getElementById('stName').value.trim()
+  if(!name){ toast('请输入门店名称'); return }
+  try{
+    await api('/api/store/'+(staff.storeId||1),'PUT',{name,
+      address:document.getElementById('stAddr').value, phone:document.getElementById('stPhone').value})
+    toast('门店信息已保存，顾客端刷新即生效')
+  }catch(e){}
+}
+async function loadRoomsMgt(){
+  try{
+    const rooms = await api('/api/rooms')
+    document.getElementById('roomMgtList').innerHTML = rooms.length ? rooms.map(r=>`
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)">
+        <div><div style="font-weight:600">${r.name}</div>
+        <div style="font-size:12px;color:var(--muted)">${r.roomType||''} · ${r.capacity||''} · ¥${Number(r.priceHour).toFixed(0)}/时</div></div>
+        <button class="btn small" style="background:#fff;color:var(--brand);border:1px solid var(--brand)" onclick="delRoom(${r.id})">删除</button>
+      </div>`).join('') : '<div style="color:var(--muted);font-size:13px;padding:8px 0">暂无茶室</div>'
+  }catch(e){}
+}
+async function addRoom(){
+  const name = document.getElementById('rmName').value.trim()
+  if(!name){ toast('请输入茶室名称'); return }
+  const body = { name, roomType:document.getElementById('rmType').value, capacity:document.getElementById('rmCap').value,
+    priceHour:+document.getElementById('rmPrice').value||0, storeId:staff.storeId, status:1 }
+  try{
+    await api('/api/rooms','POST',body)
+    toast('茶室已新增');['rmName','rmType','rmCap','rmPrice'].forEach(id=>document.getElementById(id).value='')
+    loadRoomsMgt()
+  }catch(e){}
+}
+async function delRoom(id){
+  try{ await api('/api/rooms/'+id,'DELETE'); toast('已删除'); loadRoomsMgt() }catch(e){}
+}
+async function doRecharge(){
+  const memberId = +document.getElementById('rcMember').value
+  const amount = +document.getElementById('rcAmount').value
+  const gift = +document.getElementById('rcGift').value || 0
+  if(!memberId || !amount){ toast('请填写会员ID和充值金额'); return }
+  try{
+    await api('/api/account/recharge','POST',{memberId,amount,giftAmount:gift,remark:'员工代充'})
+    toast('储值成功：到账 ¥'+(amount+gift).toFixed(2))
+    document.getElementById('rcAmount').value=''
+    document.getElementById('rcGift').value=''
+    loadDash()
+  }catch(e){}
+}
+function logout(){ token='';staff={};location.reload() }
+</script>
+</body>
+</html>
