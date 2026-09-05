@@ -1,0 +1,17 @@
+/* 全局样式与主题变量（八马红 / 茶金 / 茶绿，与小程序端保持一致） */
+:root {
+  --bm-brand: #8C1F28;      /* 八马红 */
+  --bm-gold:  #B99A5B;      /* 茶金 */
+  --bm-green: #3F6B4B;      /* 茶绿 */
+  --bm-bg:    #F5F6F8;
+  --el-color-primary: #8C1F28;
+}
+html, body, #app { height: 100%; margin: 0; }
+body { font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; background: var(--bm-bg); }
+
+/* 页面通用卡片容器 */
+.page-card { background: #fff; border-radius: 8px; padding: 18px; }
+.page-title { font-size: 17px; font-weight: 600; margin: 0 0 14px; color: #1f2329; }
+.page-sub { font-size: 13px; color: #8a9099; font-weight: normal; margin-left: 8px; }
+.search-bar { margin-bottom: 14px; }
+.mono { font-variant-numeric: tabular-nums; }

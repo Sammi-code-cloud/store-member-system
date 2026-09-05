@@ -34,10 +34,12 @@
 | 员工端 | `bama-store-miniapp/pages/staff/` | 登录、工作台、扫码、收款、储值、概览 | ✅ 已完成 |
 | 演示页 | `demo-h5/` | 纯 HTML 实机演示（免装小程序环境，浏览器直接跑） | ✅ 已完成 |
 | 后端服务 | `bama-store-admin/` | Spring Boot，11 个 Controller | ✅ 已完成 |
-| **管理后台** | *（待建 `bama-store-web/`）* | Vue3 + Vite + Element Plus | ⏳ **未开发** |
+| 管理后台 | `bama-store-web/` | 数据概览、代客储值、预定核销、会员、货品、茶室、员工权限、门店设置 | ✅ 已完成 |
 
-> **命名提示**：`bama-store-admin` 是**后端服务**工程，不是管理后台前端。
-> 管理后台所需接口（会员、货品、员工、权限、门店）后端均已实现，仅缺前端界面。
+> **命名提示**：`bama-store-admin` 是**后端服务**工程；`bama-store-web` 才是管理后台前端。
+>
+> 管理后台除自身的资料管理职能外，还整合了**员工端的代客储值、数据概览、预定核销**三项功能，
+> 店长无需切换到小程序即可在 PC 上完成日常运营。扫码收款依赖摄像头，仍保留在员工手机端。
 
 ## 三、技术栈
 
@@ -47,7 +49,7 @@
 | 数据库 | MySQL 8（另提供 H2 内存库启动档，免安装快速演示） |
 | 小程序 | uni-app（Vue3），一套代码编译到微信小程序 / H5 / App |
 | 演示页 | 原生 HTML + Node 原生 http 静态服务器（零依赖） |
-| 管理后台 | Vue3 + Vite + Element Plus + Pinia（规划中） |
+| 管理后台 | Vue3.5 + Vite 5 + Element Plus 2 + Pinia + Vue Router 4 + axios |
 
 ## 四、目录结构
 
@@ -65,6 +67,12 @@ store-member-system/
 │       ├── application-h2.yml       H2 内存库启动档
 │       ├── application-local.yml.example   本地配置模板 ← 复制它
 │       └── db/                      建表与初始化脚本（幂等）
+├── bama-store-web/                  Web 管理后台（Vue3 + Vite + Element Plus）
+│   ├── src/api/                     接口封装
+│   ├── src/router/                  路由表（含权限码）与登录守卫
+│   ├── src/layout/                  侧边栏布局，菜单按权限过滤
+│   ├── src/store/                   Pinia 登录态与权限集合
+│   └── src/views/                   9 个业务页面
 ├── bama-store-miniapp/              uni-app 小程序（顾客端 + 员工端）
 ├── demo-h5/                         纯 HTML 演示页
 │   ├── index.html                   员工端
@@ -107,7 +115,21 @@ cd demo-h5
 node server.js
 ```
 
-### 5. 启动小程序（可选）
+### 5. 启动管理后台
+
+```bash
+cd bama-store-web
+npm install
+npm run dev              # http://localhost:5174，自动打开浏览器
+```
+开发期请求经 Vite 代理转发到后端，前端不硬编码后端地址。
+后端不在默认地址时，用环境变量指定，无需改代码：
+```bash
+# Windows PowerShell
+$env:VITE_API_TARGET="http://192.168.1.100:8080"; npm run dev
+```
+
+### 6. 启动小程序（可选）
 
 ```bash
 cd bama-store-miniapp
@@ -123,7 +145,7 @@ npm run dev:mp-weixin    # 微信小程序，产物在 dist/dev/mp-weixin
 |---|---|
 | **员工端** | http://localhost:8081/index.html |
 | **顾客端** | http://localhost:8081/customer.html |
-| **管理后台** | 未开发 |
+| **管理后台** | http://localhost:5174 |
 | 后端 API | http://localhost:8080 |
 | H2 控制台（仅 h2 档） | http://localhost:8080/h2-console |
 | 小程序 H5 预览 | http://localhost:5173 |
@@ -199,7 +221,9 @@ npm run dev:mp-weixin    # 微信小程序，产物在 dist/dev/mp-weixin
 
 ## 十二、待办
 
-- [ ] **Web 管理后台前端**（Vue3 + Element Plus）——接口已就绪，仅缺界面
+- [x] ~~Web 管理后台前端（Vue3 + Element Plus）~~ 已完成，见 `bama-store-web/`
+- [ ] 管理后台接入 Element Plus 按需引入，优化打包体积（当前单 chunk 约 1.2 MB）
+- [ ] 多门店管理（后端需补充门店列表接口，当前后台仅支持单门店）
 - [ ] 顾客端微信 openid 登录（当前顾客身份为演示数据，接口位置已在 `common/api.js` 预留）
 - [ ] 微信支付对接（当前储值为后台代充）
 - [ ] 消费流水报表导出
