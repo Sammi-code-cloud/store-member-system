@@ -61,3 +61,6 @@ Thumbs.db
 *.swp
 八马门店系统-开发计划.md
 八马门店系统-产品界面图.html
+config.txt
+# 本地连接凭据、私有运维记录
+bama-store-admin/.local/
