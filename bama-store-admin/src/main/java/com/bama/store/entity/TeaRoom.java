@@ -19,6 +19,13 @@ public class TeaRoom extends BaseEntity {
     private String capacity;
     private BigDecimal priceHour;
     private String image;
+    private String description;
+    private String facilities;
+    private String openTime;
+    private String closeTime;
+    private BigDecimal minHours;
+    private Integer advanceDays;
+    private Integer sortOrder;
     private Long storeId;
     /** 1可用 0停用 */
     private Integer status;

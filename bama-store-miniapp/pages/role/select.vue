@@ -26,7 +26,7 @@
       </view>
     </view>
 
-    <text class="foot">演示环境 · 数据仅供预览</text>
+    <text class="foot">八马茶业 · 门店服务</text>
   </view>
 </template>
 

@@ -23,8 +23,12 @@ public class ReservationController {
     @PreAuthorize("hasAuthority('reservation:view')")
     public Result<PageResult<Reservation>> page(@RequestParam(defaultValue = "1") long pageNum,
                                                 @RequestParam(defaultValue = "10") long pageSize,
-                                                @RequestParam(required = false) String status) {
-        return Result.success(PageResult.of(reservationService.page(pageNum, pageSize, status)));
+                                                @RequestParam(required = false) String status,
+                                                @RequestParam(required = false) java.time.LocalDate date,
+                                                @RequestParam(required = false) Long roomId,
+                                                @RequestParam(required = false) String keyword,
+                                                @RequestParam(required = false) Long memberId) {
+        return Result.success(PageResult.of(reservationService.page(pageNum, pageSize, status, date, roomId, keyword, memberId)));
     }
 
     /** 创建预定 */
@@ -35,10 +39,32 @@ public class ReservationController {
     }
 
     /** 核销预定 */
+    @PostMapping("/{id}/confirm")
+    @PreAuthorize("hasAuthority('reservation:manage')")
+    public Result<Void> confirm(@PathVariable Long id) { reservationService.confirm(id); return Result.success(); }
+
+    @PostMapping("/{id}/reject")
+    @PreAuthorize("hasAuthority('reservation:manage')")
+    public Result<Void> reject(@PathVariable Long id, @RequestBody CancelRequest body) { reservationService.reject(id, body.reason()); return Result.success(); }
+
     @PostMapping("/{id}/verify")
     @PreAuthorize("hasAuthority('reservation:verify')")
     public Result<Void> verify(@PathVariable Long id) {
         reservationService.verify(id, SecurityUtil.staffId());
         return Result.success();
     }
+
+    @PostMapping("/{id}/complete")
+    @PreAuthorize("hasAuthority('reservation:verify')")
+    public Result<Void> complete(@PathVariable Long id) { reservationService.complete(id); return Result.success(); }
+
+    public record CancelRequest(String reason) {}
+    @PostMapping("/{id}/cancel")
+    @PreAuthorize("hasAuthority('reservation:manage')")
+    public Result<Void> cancel(@PathVariable Long id, @RequestBody CancelRequest body) { reservationService.cancel(id, body.reason()); return Result.success(); }
+
+    public record RescheduleRequest(java.time.LocalDate date, String startTime) {}
+    @PutMapping("/{id}/schedule")
+    @PreAuthorize("hasAuthority('reservation:manage')")
+    public Result<Void> schedule(@PathVariable Long id, @RequestBody RescheduleRequest body) { reservationService.reschedule(id, body.date(), body.startTime()); return Result.success(); }
 }

@@ -88,7 +88,7 @@
       <div class="card">
         <div class="field"><label>手机号</label><input id="phone" value="13800000001"></div>
         <div class="field"><label>密码</label><input id="password" type="password" value="123456"></div>
-        <button class="btn" onclick="doLogin()">登 录</button>
+        <button class="btn" onclick="doLogin()">登 录</button><button class="btn" style="margin-top:12px;background:#368352" onclick="wechatStaff()">微信登录</button>
       </div>
       <div class="hint">演示账号：店长 <b>13800000000 / admin123</b><br>收银员 <b>13800000001 / 123456</b></div>
     </div>
@@ -199,7 +199,7 @@
 
 <div class="toast" id="toast"></div>
 
-<script>
+<script src="/wechat-login.js"></script><script>
 const BASE = 'http://127.0.0.1:8080'
 let token = '', staff = {}, member = null
 document.getElementById('apiBase').textContent = BASE
@@ -216,6 +216,7 @@ async function api(path, method='GET', body){
   return data.data
 }
 
+async function wechatStaff(){try{const result=await window.WechatLogin.open('STAFF');const r=result.account;token=r.token;staff=r;document.getElementById('loginView').classList.add('hidden');document.getElementById('appView').classList.remove('hidden');document.getElementById('who').textContent=r.name+' · '+r.permissions.length+'项权限';loadDash();loadRoomsMgt();loadStore()}catch(e){toast(e.message)}}
 async function doLogin(){
   try{
     const r = await api('/api/auth/login','POST',{

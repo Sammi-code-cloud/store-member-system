@@ -28,6 +28,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtUtil jwtUtil;
     private final LoginStaffService loginStaffService;
+    private final com.bama.store.mapper.MemberMapper memberMapper;
+    private final com.bama.store.mapper.StoreMapper storeMapper;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
@@ -42,12 +44,33 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             if (staffId != null) {
                 LoginStaff loginStaff = loginStaffService.load(staffId);
                 if (loginStaff != null) {
-                    List<SimpleGrantedAuthority> authorities = loginStaff.getPermissions().stream()
+                    String selected = request.getHeader("X-Store-Id");
+                    if (StringUtils.hasText(selected)) {
+                        Long storeId = null;
+                        try { storeId = Long.valueOf(selected); } catch (NumberFormatException ignored) { }
+                        if (storeId == null || (!storeId.equals(loginStaff.getStoreId())
+                                && !loginStaff.getPermissions().contains("store:all")) || storeMapper.selectById(storeId) == null) {
+                            response.setContentType("application/json;charset=UTF-8");
+                            response.getWriter().write("{\"code\":403,\"message\":\"无权访问该分店\",\"data\":null}");
+                            return;
+                        }
+                        loginStaff.setStoreId(storeId);
+                    }
+                    List<SimpleGrantedAuthority> authorities = new java.util.ArrayList<>(loginStaff.getPermissions().stream()
                             .map(SimpleGrantedAuthority::new)
-                            .toList();
+                            .toList());
+                    authorities.add(new SimpleGrantedAuthority("staff:session"));
                     UsernamePasswordAuthenticationToken authentication =
                             new UsernamePasswordAuthenticationToken(loginStaff, null, authorities);
                     authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                    SecurityContextHolder.getContext().setAuthentication(authentication);
+                }
+            } else {
+                Long memberId = jwtUtil.parseCustomerId(token);
+                var member = memberId == null ? null : memberMapper.selectById(memberId);
+                if (member != null && Integer.valueOf(1).equals(member.getStatus())) {
+                    var authentication = new UsernamePasswordAuthenticationToken(new LoginCustomer(memberId), null,
+                            List.of(new SimpleGrantedAuthority("customer:self")));
                     SecurityContextHolder.getContext().setAuthentication(authentication);
                 }
             }

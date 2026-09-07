@@ -19,10 +19,9 @@ public class ProductService {
     private final ProductMapper productMapper;
 
     public Page<Product> page(long pageNum, long pageSize, String keyword) {
-        LambdaQueryWrapper<Product> wrapper = new LambdaQueryWrapper<>();
+        LambdaQueryWrapper<Product> wrapper = new LambdaQueryWrapper<Product>().eq(Product::getStoreId, com.bama.store.security.SecurityUtil.storeId());
         if (StringUtils.hasText(keyword)) {
-            wrapper.like(Product::getName, keyword)
-                    .or().like(Product::getBarcode, keyword);
+            wrapper.and(q -> q.like(Product::getName, keyword).or().like(Product::getBarcode, keyword));
         }
         wrapper.orderByDesc(Product::getId);
         return productMapper.selectPage(new Page<>(pageNum, pageSize), wrapper);
@@ -33,11 +32,14 @@ public class ProductService {
         if (product == null) {
             throw new BusinessException("货品不存在");
         }
+        com.bama.store.security.SecurityUtil.ownStore(product.getStoreId());
         return product;
     }
 
     /** 录入或更新货品 */
     public Long save(Product product) {
+        if (product.getId() != null) getById(product.getId());
+        product.setStoreId(com.bama.store.security.SecurityUtil.storeId());
         // 条码唯一校验
         if (StringUtils.hasText(product.getBarcode())) {
             LambdaQueryWrapper<Product> wrapper = new LambdaQueryWrapper<Product>()
@@ -61,6 +63,7 @@ public class ProductService {
     }
 
     public void updateStatus(Long id, Integer status) {
+        getById(id);
         Product product = new Product();
         product.setId(id);
         product.setStatus(status);
@@ -68,6 +71,7 @@ public class ProductService {
     }
 
     public void delete(Long id) {
+        getById(id);
         productMapper.deleteById(id);
     }
 }

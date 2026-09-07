@@ -5,82 +5,96 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.bama.store.common.BusinessException;
 import com.bama.store.common.OrderNoUtil;
 import com.bama.store.dto.StaffCreateRequest;
-import com.bama.store.entity.Staff;
-import com.bama.store.entity.StaffRole;
-import com.bama.store.mapper.StaffMapper;
-import com.bama.store.mapper.StaffRoleMapper;
+import com.bama.store.entity.*;
+import com.bama.store.mapper.*;
+import com.bama.store.security.SecurityUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.StringUtils;
+import java.util.*;
 
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
-
-/**
- * 员工管理
- */
 @Service
 @RequiredArgsConstructor
 public class StaffService {
-
     private final StaffMapper staffMapper;
     private final StaffRoleMapper staffRoleMapper;
+    private final RoleMapper roleMapper;
+    private final RolePermissionMapper rolePermissions;
+    private final PermissionMapper permissions;
     private final PasswordEncoder passwordEncoder;
+    private final AuditService audit;
 
-    /** 分页查询员工 */
     public Page<Staff> page(long pageNum, long pageSize, String keyword) {
-        LambdaQueryWrapper<Staff> wrapper = new LambdaQueryWrapper<>();
-        if (StringUtils.hasText(keyword)) {
-            wrapper.like(Staff::getName, keyword).or().like(Staff::getPhone, keyword);
+        var q = new LambdaQueryWrapper<Staff>().eq(Staff::getStoreId, SecurityUtil.storeId());
+        if (keyword != null && !keyword.isBlank()) q.and(w -> w.like(Staff::getName, keyword).or().like(Staff::getPhone, keyword).or().like(Staff::getStaffNo, keyword));
+        var page = staffMapper.selectPage(new Page<Staff>(Math.max(1, pageNum), Math.min(200, Math.max(1, pageSize))), q.orderByDesc(Staff::getId));
+        for (Staff staff : page.getRecords()) {
+            var ids = staffRoleMapper.selectList(new LambdaQueryWrapper<StaffRole>().eq(StaffRole::getStaffId, staff.getId())).stream().map(StaffRole::getRoleId).toList();
+            staff.setRoleIds(ids); staff.setRoleNames(ids.isEmpty() ? List.of() : roleMapper.selectBatchIds(ids).stream().map(Role::getName).toList());
         }
-        wrapper.orderByDesc(Staff::getId);
-        return staffMapper.selectPage(new Page<>(pageNum, pageSize), wrapper);
+        return page;
     }
 
-    /** 新增员工并分配角色 */
+    private void validate(String name, String phone, List<Long> roleIds, Long id) {
+        if (name == null || name.isBlank() || name.trim().length() > 32) throw new BusinessException("请填写 1–32 字的姓名");
+        if (phone == null || !phone.matches("1[3-9]\\d{9}")) throw new BusinessException("请填写正确的手机号");
+        if (staffMapper.selectCount(new LambdaQueryWrapper<Staff>().eq(Staff::getPhone, phone).ne(id != null, Staff::getId, id)) > 0) throw new BusinessException("该手机号已被使用");
+        if (roleIds == null || roleIds.isEmpty() || roleIds.contains(null)) throw new BusinessException("请至少分配一个角色");
+        var distinct = new HashSet<>(roleIds);
+        if (roleMapper.selectBatchIds(distinct).size() != distinct.size()) throw new BusinessException("选择的角色不存在");
+        var permissionIds = rolePermissions.selectList(new LambdaQueryWrapper<RolePermission>().in(RolePermission::getRoleId, distinct)).stream().map(RolePermission::getPermissionId).distinct().toList();
+        var codes = permissionIds.isEmpty() ? List.<String>of() : permissions.selectBatchIds(permissionIds).stream().map(Permission::getCode).toList();
+        if (!SecurityUtil.current().getPermissions().containsAll(codes)) throw new BusinessException("不能分配超出本人权限的角色");
+        if (SecurityUtil.staffId().equals(id) && !codes.contains("staff:manage")) throw new BusinessException("不能移除自己的员工管理权限");
+    }
+
+    private Staff require(Long id) {
+        Staff staff = staffMapper.selectById(id);
+        if (staff == null) throw new BusinessException("员工不存在");
+        SecurityUtil.ownStore(staff.getStoreId());
+        var targetCodes = permissions.selectPermissionCodesByStaffId(id);
+        if (!SecurityUtil.current().getPermissions().containsAll(targetCodes))
+            throw new BusinessException(com.bama.store.common.ResultCode.FORBIDDEN);
+        return staff;
+    }
+    private void assign(Long id, List<Long> roleIds) {
+        staffRoleMapper.delete(new LambdaQueryWrapper<StaffRole>().eq(StaffRole::getStaffId, id));
+        for (Long roleId : new HashSet<>(roleIds)) staffRoleMapper.insert(new StaffRole(id, roleId));
+    }
+    private void password(String value) {
+        if (value == null || value.length() < 8 || value.length() > 64) throw new BusinessException("密码需为 8–64 位");
+    }
+
     @Transactional
     public Long create(StaffCreateRequest req) {
-        Long exists = staffMapper.selectCount(
-                new LambdaQueryWrapper<Staff>().eq(Staff::getPhone, req.getPhone()));
-        if (exists != null && exists > 0) {
-            throw new BusinessException("该手机号已被使用");
-        }
-
-        Staff staff = new Staff();
-        staff.setStaffNo(generateStaffNo());
-        staff.setName(req.getName());
-        staff.setPhone(req.getPhone());
-        staff.setPassword(passwordEncoder.encode(req.getPassword()));
-        staff.setStoreId(req.getStoreId());
-        staff.setStatus(1);
-        staffMapper.insert(staff);
-
-        for (Long roleId : req.getRoleIds()) {
-            staffRoleMapper.insert(new StaffRole(staff.getId(), roleId));
-        }
-        return staff.getId();
+        validate(req.getName(), req.getPhone(), req.getRoleIds(), null); password(req.getPassword());
+        Staff staff = new Staff(); staff.setStaffNo(OrderNoUtil.generate("BM")); staff.setName(req.getName().trim()); staff.setPhone(req.getPhone());
+        staff.setPassword(passwordEncoder.encode(req.getPassword())); staff.setStoreId(SecurityUtil.storeId()); staff.setStatus(1);
+        staffMapper.insert(staff); assign(staff.getId(), req.getRoleIds());
+        audit.record("添加员工", staff.getStaffNo(), staff.getName() + "，角色 " + req.getRoleIds()); return staff.getId();
     }
 
-    /** 启用/停用 */
-    public void updateStatus(Long staffId, Integer status) {
-        Staff staff = new Staff();
-        staff.setId(staffId);
-        staff.setStatus(status);
-        staffMapper.updateById(staff);
+    @Transactional
+    public void update(Long id, String name, String phone, List<Long> roleIds) {
+        Staff staff = require(id); validate(name, phone, roleIds, id);
+        String before = staff.getName() + " / " + staff.getPhone() + " / 角色 " + staffRoleMapper.selectList(new LambdaQueryWrapper<StaffRole>().eq(StaffRole::getStaffId, id)).stream().map(StaffRole::getRoleId).toList();
+        staff.setName(name.trim()); staff.setPhone(phone); staffMapper.updateById(staff); assign(id, roleIds);
+        audit.record("编辑员工", staff.getStaffNo(), before + " → " + name.trim() + " / " + phone + " / 角色 " + roleIds);
     }
 
-    /** 重置密码 */
-    public void resetPassword(Long staffId, String newPassword) {
-        Staff staff = new Staff();
-        staff.setId(staffId);
-        staff.setPassword(passwordEncoder.encode(newPassword));
-        staffMapper.updateById(staff);
+    @Transactional
+    public void updateStatus(Long id, Integer status) {
+        Staff staff = require(id);
+        if (status == null || status != 0 && status != 1) throw new BusinessException("状态无效");
+        if (id.equals(SecurityUtil.staffId()) && status == 0) throw new BusinessException("不能停用当前登录账号");
+        int before = staff.getStatus(); staff.setStatus(status); staffMapper.updateById(staff);
+        audit.record("员工状态", staff.getStaffNo(), before + " → " + status);
     }
 
-    private String generateStaffNo() {
-        return "BM-" + LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy")) + "-"
-                + OrderNoUtil.generate("").substring(8);
+    @Transactional
+    public void resetPassword(Long id, String value) {
+        Staff staff = require(id); password(value); staff.setPassword(passwordEncoder.encode(value)); staffMapper.updateById(staff);
+        audit.record("重置员工密码", staff.getStaffNo(), "已重置密码");
     }
 }

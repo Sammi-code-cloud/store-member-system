@@ -12,6 +12,8 @@
       <el-form-item label="联系电话">
         <el-input v-model="form.phone" placeholder="如 0592-8888888" />
       </el-form-item>
+      <el-form-item label="营业时间" required><el-time-select v-model="form.openTime" start="00:00" end="23:30" step="00:30" style="width:160px"/><span style="margin:0 10px">至</span><el-time-select v-model="form.closeTime" start="00:30" end="23:30" step="00:30" style="width:160px"/></el-form-item>
+      <el-form-item label="预约须知"><el-input v-model="form.reservationNotice" type="textarea" :rows="4" maxlength="1000" show-word-limit placeholder="到店须知、联系方式与预约说明"/></el-form-item>
       <el-form-item label="营业状态">
         <el-radio-group v-model="form.status">
           <el-radio :value="1">正常营业</el-radio>
@@ -26,7 +28,7 @@
     </el-form>
 
     <el-alert type="info" :closable="false" show-icon style="margin-top:8px"
-              title="当前仅支持单门店配置，多门店管理需后端补充门店列表接口后开放。" />
+              title="正在编辑顶部所选分店。暂停营业后，该分店不再展示给顾客，也不能新建预约；已有预约仍可在后台处理。" />
   </div>
 </template>
 
@@ -41,7 +43,7 @@ const loading = ref(false)
 const saving = ref(false)
 // 门店 ID 取当前登录员工所属门店
 const storeId = userStore.storeId
-const form = reactive({ name: '', address: '', phone: '', status: 1 })
+const form = reactive({ name: '', address: '', phone: '', status: 1, openTime: '10:00', closeTime: '22:00', reservationNotice: '' })
 
 async function load() {
   loading.value = true
@@ -58,6 +60,7 @@ async function onSave() {
   saving.value = true
   try {
     await api.storeUpdate(storeId, { ...form })
+    await userStore.loadStores()
     ElMessage.success('保存成功')
     load()
   } finally {

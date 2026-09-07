@@ -32,6 +32,19 @@
       </view>
     </view>
 
+    <view class="section" v-if="canManage">
+      <view class="row-head flex-between"><text class="h">待确认预约</text><text class="more">{{pendingTotal}} 单</text></view>
+      <text class="pending-note">确认后顾客才预约成功；拒绝会释放所选时段。</text>
+      <view v-if="!pending.length" class="empty">暂无待确认申请</view>
+      <view v-for="r in pending" :key="r.id" class="pending-card card">
+        <text class="pending-title">{{r.roomName}} · {{r.contactName || r.memberName}}</text>
+        <text class="pending-note">{{r.reserveDate}} {{r.startTime}} · {{r.hours}}小时 · ¥{{r.amount}}</text>
+        <text v-if="r.contactPhone" class="pending-note">联系电话：{{r.contactPhone}}</text><text v-if="r.remark" class="pending-note">备注：{{r.remark}}</text>
+        <view class="pending-actions"><button :disabled="processing" @tap="approve(r)">确认预约</button><button :disabled="processing" @tap="rejectId=r.id;rejectReason=''">拒绝</button></view>
+        <view v-if="rejectId===r.id"><textarea v-model="rejectReason" maxlength="255" placeholder="请填写拒绝原因，顾客可见" class="reject-input"/><view class="pending-actions"><button :disabled="processing" @tap="reject(r)">提交拒绝</button><button :disabled="processing" @tap="rejectId=null">返回</button></view></view>
+      </view>
+      <view class="pending-actions" v-if="pendingTotal>20"><button :disabled="pendingPage===1" @tap="pendingPage--;loadPending()">上一页</button><text>{{pendingPage}} / {{Math.ceil(pendingTotal/20)}}</text><button :disabled="pendingPage*20>=pendingTotal" @tap="pendingPage++;loadPending()">下一页</button></view>
+    </view>
     <view class="section">
       <view class="row-head flex-between">
         <text class="h">待核销预定</text>
@@ -62,9 +75,10 @@ export default {
       todayAmount: '0.00',
       todayCount: 0,
       todayReservations: 0,
-      reservations: []
+      reservations: [], pending:[],pendingTotal:0,pendingPage:1,processing:false,rejectId:null,rejectReason:''
     }
   },
+  computed: { canManage(){return auth.can('reservation:manage')} },
   onLoad() {
     this.statusBarHeight = uni.getSystemInfoSync().statusBarHeight || 20
     this.staff = auth.getStaff() || {}
@@ -79,6 +93,7 @@ export default {
   methods: {
     go(url) { uni.navigateTo({ url }) },
     async loadData() {
+      if(this.canManage)this.loadPending()
       try {
         const d = await api.dashboard()
         this.todayAmount = (d.todayConsumeAmount || 0).toFixed
@@ -92,6 +107,9 @@ export default {
         this.reservations = page.records || []
       } catch (e) {}
     },
+    async loadPending(){try{const page=await api.reservationPage({status:'PENDING',pageNum:this.pendingPage,pageSize:20});this.pending=page.records||[];this.pendingTotal=page.total||0;if(!this.pending.length&&this.pendingPage>1){this.pendingPage--;return this.loadPending()}}catch{this.pending=[]}},
+    approve(r){if(this.processing)return;uni.showModal({title:'确认预约',content:'确认接受该预约申请？确认后顾客将看到预约成功。',success:async result=>{if(!result.confirm||this.processing)return;this.processing=true;try{await api.reservationConfirm(r.id);uni.showToast({title:'已确认预约'});await this.loadData()}catch{}finally{this.processing=false}}})},
+    async reject(r){if(this.processing)return;if(!this.rejectReason.trim())return uni.showToast({title:'请填写拒绝原因',icon:'none'});this.processing=true;try{await api.reservationReject(r.id,this.rejectReason.trim());this.rejectId=null;uni.showToast({title:'已拒绝，时段已释放',icon:'none'});await this.loadData()}catch{}finally{this.processing=false}},
     async verify(r) {
       uni.showModal({
         title: '核销确认',
@@ -160,3 +178,5 @@ export default {
 .txt .t2 { display: block; font-size: 22rpx; color: $muted; margin-top: 4rpx; }
 .verify { background: $brand; color: #fff; font-size: 24rpx; padding: 12rpx 28rpx; border-radius: 999rpx; }
 </style>
+
+<style scoped>.pending-card{padding:26rpx;margin-bottom:20rpx}.pending-title{display:block;font-size:28rpx;color:#5e3f31}.pending-note{display:block;font-size:23rpx;color:#9a806c;line-height:1.8;margin:10rpx 0}.pending-actions{display:flex;align-items:center;gap:16rpx;margin-top:16rpx}.pending-actions button{font-size:24rpx;background:#fff1e3;color:#ad3e2b;border-radius:10rpx;flex:1}.reject-input{background:#fff8f1;border:1rpx solid #ecddcf;padding:18rpx;height:140rpx;width:100%;box-sizing:border-box;font-size:24rpx;margin-top:18rpx}</style>

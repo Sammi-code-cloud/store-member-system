@@ -1,116 +1,67 @@
 <template>
-  <div class="page-card">
-    <h3 class="page-title">预定核销 <span class="page-sub">查看茶室预定并核销到店，等同员工端工作台的核销功能</span></h3>
-
-    <div class="search-bar">
-      <el-radio-group v-model="status" @change="onFilter">
-        <el-radio-button value="">全部</el-radio-button>
-        <el-radio-button value="WAITING">待核销</el-radio-button>
-        <el-radio-button value="VERIFIED">已核销</el-radio-button>
-      </el-radio-group>
-      <el-button :icon="Refresh" style="margin-left:12px" @click="load">刷新</el-button>
+  <div>
+    <div class="page-heading"><div><div class="eyebrow">RESERVATIONS</div><h2>预约管理</h2><p>顾客提交后需店员确认；待确认申请暂占时段，拒绝后释放。</p></div><el-button type="primary" :disabled="!user.has('reservation:manage') || !user.has('member:view')" @click="openCreate">代客预约</el-button></div>
+    <div class="page-card">
+      <div class="filter-bar"><el-radio-group v-model="view" @change="filter"><el-radio-button value="list">预约列表</el-radio-button><el-radio-button value="calendar">房间日历</el-radio-button></el-radio-group><el-date-picker v-model="date" value-format="YYYY-MM-DD" placeholder="预约日期" :clearable="view==='list'" @change="filter"/><el-select v-model="roomId" placeholder="全部房间" clearable style="width:155px" @change="filter"><el-option v-for="r in rooms" :key="r.id" :value="r.id" :label="r.name"/></el-select><el-input v-model="keyword" placeholder="订单号 / 顾客 / 联系电话" clearable style="width:245px" @keyup.enter="filter" @clear="filter"/><el-button @click="filter">查询</el-button></div>
+      <div v-if="view==='list'" class="filter-bar"><el-radio-group v-model="status" @change="filter"><el-radio-button value="">全部状态</el-radio-button><el-radio-button v-for="(label,key) in reservationStates" :key="key" :value="key">{{label}}</el-radio-button></el-radio-group></div>
+      <template v-if="view==='list'">
+        <el-table :data="list" v-loading="loading" empty-text="暂无符合条件的预约">
+          <el-table-column label="预约单" min-width="210"><template #default="{row}"><b>{{row.roomName}}</b><div class="small muted">{{row.orderNo}}</div></template></el-table-column>
+          <el-table-column label="顾客 / 联系人" min-width="150"><template #default="{row}">{{row.contactName || row.memberName}}<div class="small muted">{{row.contactPhone || '未留电话'}}</div></template></el-table-column>
+          <el-table-column label="预约时间" width="200"><template #default="{row}">{{row.reserveDate}}<div>{{row.startTime}}–{{endTime(row)}} <span class="small muted">· {{row.hours}} 小时</span></div></template></el-table-column>
+          <el-table-column label="应付金额" width="115"><template #default="{row}"><span class="amount">¥{{money(row.amount)}}</span></template></el-table-column>
+          <el-table-column label="来源" width="85"><template #default="{row}">{{row.source==='CUSTOMER'?'顾客端':'门店'}}</template></el-table-column>
+          <el-table-column label="状态" width="100"><template #default="{row}"><el-tag :type="stateTag(row.status)">{{reservationStates[row.status]}}</el-tag></template></el-table-column>
+          <el-table-column label="操作" fixed="right" width="260"><template #default="{row}"><el-button link type="primary" @click="detail=row;drawer=true">详情</el-button><el-button v-if="row.status==='PENDING' && user.has('reservation:manage')" link type="success" @click="approve(row)">确认预约</el-button><el-button v-if="row.status==='PENDING' && user.has('reservation:manage')" link type="danger" @click="reject(row)">拒绝</el-button><el-button v-if="row.status==='WAITING' && user.has('reservation:verify')" link type="primary" @click="transition(row,'verify')">到店</el-button><el-button v-if="row.status==='USING' && user.has('reservation:verify')" link type="primary" @click="transition(row,'complete')">完成</el-button><el-button v-if="row.status==='WAITING' && user.has('reservation:manage')" link type="primary" @click="openSchedule(row)">改期</el-button><el-button v-if="row.status==='WAITING' && user.has('reservation:manage')" link type="danger" @click="cancel(row)">取消</el-button></template></el-table-column>
+        </el-table>
+        <el-pagination class="pagination" layout="total, sizes, prev, pager, next" :total="total" :page-sizes="[10,20,50]" v-model:page-size="pageSize" v-model:current-page="page" @size-change="filter" @current-change="load"/>
+      </template>
+      <div v-else class="calendar" v-loading="loading">
+        <p class="small muted">{{date}} · 展示全部有效预约，待确认申请暂占时段，取消和拒绝订单不占用。点击预约查看详情；临时关闭在房间管理中维护。</p>
+        <div class="calendar-scroll"><div class="calendar-head"><span>房间</span><div class="hours"><span v-for="h in [0,4,8,12,16,20,24]" :key="h" :style="{left:h/24*100+'%'}">{{String(h).padStart(2,'0')}}:00</span></div></div>
+        <div v-for="room in calendarRooms" :key="room.id" class="calendar-row"><div class="calendar-name"><b>{{room.name}}</b><small>{{room.openTime}}–{{room.closeTime}}</small></div><div class="time-track"><button v-for="r in list.filter(r=>r.roomId===room.id && !['CANCELLED','REJECTED'].includes(r.status))" :key="r.id" class="booking-block" :class="r.status" :style="position(r)" :title="r.contactName+' '+r.startTime+'–'+endTime(r)" @click="detail=r;drawer=true"><b>{{r.startTime}}–{{endTime(r)}}</b><span>{{r.contactName || r.memberName}}</span></button></div></div></div>
+        <el-empty v-if="!calendarRooms.length" description="暂无房间"/>
+      </div>
     </div>
-
-    <el-table :data="list" v-loading="loading" empty-text="暂无预定记录">
-      <el-table-column prop="orderNo" label="预定单号" width="180" />
-      <el-table-column prop="reserveDate" label="预定日期" width="120" />
-      <el-table-column prop="startTime" label="开始时段" width="100" />
-      <el-table-column label="时长" width="90">
-        <template #default="{ row }">{{ row.hours }} 小时</template>
-      </el-table-column>
-      <el-table-column label="金额" width="100">
-        <template #default="{ row }"><span class="mono">¥{{ row.amount }}</span></template>
-      </el-table-column>
-      <el-table-column label="茶室" width="140">
-        <template #default="{ row }">{{ roomName(row.roomId) }}</template>
-      </el-table-column>
-      <el-table-column prop="memberId" label="会员ID" width="90" />
-      <el-table-column label="状态" width="100">
-        <template #default="{ row }">
-          <el-tag :type="row.status === 'VERIFIED' ? 'success' : 'warning'" size="small">
-            {{ row.status === 'VERIFIED' ? '已核销' : '待核销' }}
-          </el-tag>
-        </template>
-      </el-table-column>
-      <el-table-column label="操作" width="110" fixed="right">
-        <template #default="{ row }">
-          <el-button link type="primary"
-                     :disabled="row.status === 'VERIFIED' || !userStore.has('reservation:verify')"
-                     @click="onVerify(row)">核销</el-button>
-        </template>
-      </el-table-column>
-    </el-table>
-
-    <el-pagination style="margin-top:12px" layout="total, sizes, prev, pager, next"
-                   :total="total" :page-size="pageSize" :current-page="pageNum"
-                   :page-sizes="[10, 20, 50]"
-                   @size-change="onSizeChange" @current-change="onPageChange" />
+    <el-drawer v-model="drawer" title="预约详情" size="520px"><el-descriptions :column="1" border><el-descriptions-item label="订单号">{{detail.orderNo}}</el-descriptions-item><el-descriptions-item label="房间">{{detail.roomName}}</el-descriptions-item><el-descriptions-item label="顾客">{{detail.memberName}}</el-descriptions-item><el-descriptions-item label="联系人">{{detail.contactName || '—'}} · {{detail.contactPhone || '未留电话'}}</el-descriptions-item><el-descriptions-item label="预约时间">{{detail.reserveDate}} {{detail.startTime}}–{{endTime(detail)}}</el-descriptions-item><el-descriptions-item label="人数">{{detail.guests || '—'}}</el-descriptions-item><el-descriptions-item label="状态">{{reservationStates[detail.status]}}</el-descriptions-item><el-descriptions-item label="应付金额">¥{{money(detail.amount)}}</el-descriptions-item><el-descriptions-item label="付款情况">请在资金流水中核对；到店核销不代表已付款</el-descriptions-item><el-descriptions-item label="备注">{{detail.remark || '—'}}</el-descriptions-item><el-descriptions-item v-if="detail.cancelReason" label="取消 / 拒绝原因">{{detail.cancelReason}}</el-descriptions-item><el-descriptions-item label="创建时间">{{dateText(detail.createTime)}}</el-descriptions-item></el-descriptions></el-drawer>
+    <el-dialog v-model="createDialog" title="代客预约" width="550px">
+      <el-form label-width="90px"><el-form-item label="顾客" required><el-select v-model="form.memberId" filterable remote :remote-method="searchCustomers" placeholder="输入姓名、账号或顾客编号" style="width:100%"><el-option v-for="m in customers" :key="m.id" :value="m.id" :label="m.name+' · '+m.memberNo"/></el-select></el-form-item><el-form-item label="房间" required><el-select v-model="form.roomId" @change="refreshSlots" style="width:100%"><el-option v-for="r in rooms.filter(r=>r.status===1)" :key="r.id" :value="r.id" :label="r.name+' · ¥'+money(r.priceHour)+'/时'"/></el-select></el-form-item><el-form-item label="日期" required><el-date-picker v-model="form.reserveDate" value-format="YYYY-MM-DD" @change="refreshSlots"/></el-form-item><el-form-item label="时长"><el-input-number v-model="form.hours" :min="0.5" :max="12" :precision="1" :step="0.5" @change="refreshSlots"/><span class="small muted" style="margin-left:10px">小时</span></el-form-item><el-form-item label="开始时间" required><el-select v-model="form.startTime" placeholder="选择可用时段" :loading="slotLoading"><el-option v-for="s in slots" :key="s.time" :value="s.time" :label="s.time+(s.available?'':'（不可用）')" :disabled="!s.available"/></el-select></el-form-item><el-form-item label="联系人"><el-input v-model="form.contactName" maxlength="64" placeholder="不填则使用顾客称呼"/></el-form-item><el-form-item label="联系电话"><el-input v-model="form.contactPhone" maxlength="11" placeholder="用于到店联系"/></el-form-item><el-form-item label="人数"><el-input-number v-model="form.guests" :min="1" :max="100"/></el-form-item><el-form-item label="备注"><el-input v-model="form.remark" type="textarea" maxlength="500"/></el-form-item></el-form>
+      <div class="notice">预计金额：¥{{money(estimate)}}，按房间当前价格计算，创建时由服务端确认。</div>
+      <template #footer><el-button @click="createDialog=false">取消</el-button><el-button type="primary" :loading="saving" @click="create">确认预约</el-button></template>
+    </el-dialog>
+    <el-dialog v-model="scheduleDialog" title="预约改期" width="450px"><p>{{detail.roomName}} · {{detail.hours}} 小时 · 保留原成交金额</p><el-form label-width="80px"><el-form-item label="新日期"><el-date-picker v-model="schedule.date" value-format="YYYY-MM-DD"/></el-form-item><el-form-item label="开始时间"><el-time-select v-model="schedule.startTime" start="00:00" end="23:30" step="00:30"/></el-form-item></el-form><p class="muted small">保存时检查营业时间、临时关闭和预约冲突。</p><template #footer><el-button @click="scheduleDialog=false">取消</el-button><el-button type="primary" :loading="saving" @click="reschedule">保存改期</el-button></template></el-dialog>
   </div>
 </template>
-
 <script setup>
-import { ref, onMounted } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
-import { Refresh } from '@element-plus/icons-vue'
+import {ref,reactive,computed,onMounted} from 'vue'
+import {useRoute} from 'vue-router'
+import {ElMessage,ElMessageBox} from 'element-plus'
 import api from '@/api'
-import { useUserStore } from '@/store/user'
-
-const userStore = useUserStore()
-const loading = ref(false)
-const list = ref([])
-const rooms = ref([])
-const total = ref(0)
-const pageNum = ref(1)
-const pageSize = ref(10)
-const status = ref('WAITING')
-
-// 茶室 ID 转名称展示
-function roomName(id) {
-  const r = rooms.value.find(x => x.id === id)
-  return r ? r.name : '#' + id
-}
-
-async function load() {
-  loading.value = true
-  try {
-    const params = { pageNum: pageNum.value, pageSize: pageSize.value }
-    if (status.value) params.status = status.value
-    const res = await api.reservationPage(params)
-    list.value = res.records || []
-    total.value = res.total || 0
-  } finally {
-    loading.value = false
-  }
-}
-
-function onFilter() {
-  pageNum.value = 1
-  load()
-}
-function onPageChange(p) {
-  pageNum.value = p
-  load()
-}
-function onSizeChange(s) {
-  pageSize.value = s
-  pageNum.value = 1
-  load()
-}
-
-// 核销：调用与员工端相同的接口 POST /api/reservations/{id}/verify
-async function onVerify(row) {
-  await ElMessageBox.confirm('确认核销预定单 ' + row.orderNo + '？核销后不可撤销。', '核销确认', { type: 'warning' })
-  await api.reservationVerify(row.id)
-  ElMessage.success('核销成功')
-  load()
-}
-
-onMounted(async () => {
-  try {
-    rooms.value = await api.roomList()
-  } catch (e) {
-    rooms.value = []
-  }
-  load()
-})
+import {useUserStore} from '@/store/user'
+import {money,dateText,localDate,reservationStates,stateTag,endTime,confirmAction} from '@/utils/format'
+const route=useRoute(),user=useUserStore()
+const view=ref('list'),date=ref(route.query.date||''),roomId=ref(route.query.roomId?Number(route.query.roomId):''),keyword=ref(''),status=ref(route.query.status||''),page=ref(1),pageSize=ref(20),total=ref(0),list=ref([]),rooms=ref([]),loading=ref(false),saving=ref(false),drawer=ref(false),detail=ref({})
+const createDialog=ref(false),scheduleDialog=ref(false),customers=ref([]),slots=ref([]),slotLoading=ref(false),form=reactive({}),schedule=reactive({date:'',startTime:''})
+const estimate=computed(()=>{const r=rooms.value.find(r=>r.id===form.roomId);return r&&form.hours?r.priceHour*form.hours:null})
+const calendarRooms=computed(()=>rooms.value.filter(r=>!roomId.value||r.id===roomId.value))
+let requestId=0,slotRequest=0
+async function load(){const id=++requestId;loading.value=true;try{const params={pageNum:page.value,pageSize:pageSize.value,status:status.value||undefined,date:date.value||undefined,roomId:roomId.value||undefined,keyword:keyword.value};if(view.value==='calendar'){params.pageNum=1;params.pageSize=200;params.status=undefined;params.keyword=undefined}const result=await api.reservationPage(params);let rows=result.records;if(view.value==='calendar')for(let p=2;rows.length<result.total;p++){const next=await api.reservationPage({...params,pageNum:p});if(!next.records.length)break;rows=rows.concat(next.records)}if(id===requestId){list.value=rows;total.value=result.total}}catch{if(id===requestId)list.value=[]}finally{if(id===requestId)loading.value=false}}
+function filter(){page.value=1;if(view.value==='calendar'&&!date.value)date.value=localDate();load()}
+function position(r){const [h,m]=r.startTime.split(':').map(Number);return{left:(h*60+m)/1440*100+'%',width:Number(r.hours)/24*100+'%'}}
+async function transition(row,action){if(!await confirmAction(ElMessageBox,action==='verify'?'确认顾客已到店并开始使用房间？':'确认结束本次房间使用？此操作不会自动扣款。'))return;try{await(action==='verify'?api.reservationVerify(row.id):api.reservationComplete(row.id));ElMessage.success('预约状态已更新');await load()}catch{}}
+async function approve(row){if(!await confirmAction(ElMessageBox,'确认接受该顾客的预约申请？确认后顾客将看到预约成功。'))return;try{await api.reservationConfirm(row.id);ElMessage.success('已确认预约');await load()}catch{}}
+async function reject(row){try{const{value}=await ElMessageBox.prompt('请输入拒绝原因，顾客会看到此说明。','拒绝预约',{inputType:'textarea',inputValidator:v=>!!v?.trim()&&v.length<=255||'请填写1–255字的原因'});await api.reservationReject(row.id,value);ElMessage.success('已拒绝，时段已释放');await load()}catch{}}
+async function cancel(row){try{const{value}=await ElMessageBox.prompt('取消后释放该时段。请输入取消原因：','取消预约',{inputType:'textarea',inputValidator:v=>!!v?.trim()&&v.length<=255||'请填写1–255字的原因'});await api.reservationCancel(row.id,value);ElMessage.success('预约已取消，时段已释放');await load()}catch{}}
+async function searchCustomers(text=''){try{customers.value=(await api.memberPage({keyword:text,status:1,pageSize:20})).records}catch{}}
+function openCreate(){Object.assign(form,{memberId:null,roomId:roomId.value||null,reserveDate:date.value||localDate(),startTime:'',hours:2,guests:1,contactName:'',contactPhone:'',remark:''});slots.value=[];createDialog.value=true;searchCustomers();refreshSlots()}
+async function refreshSlots(){const id=++slotRequest;form.startTime='';slots.value=[];if(!form.roomId||!form.reserveDate||!form.hours)return;slotLoading.value=true;try{const result=await api.roomSlots(form.roomId,{date:form.reserveDate,hours:form.hours});if(id===slotRequest)slots.value=result}catch{}finally{if(id===slotRequest)slotLoading.value=false}}
+async function create(){if(!form.memberId||!form.roomId||!form.startTime)return ElMessage.warning('请选择顾客、房间和可用时段');saving.value=true;try{await api.reservationCreate(form);createDialog.value=false;ElMessage.success('预约创建成功');await load()}catch{}finally{saving.value=false}}
+function openSchedule(row){detail.value=row;Object.assign(schedule,{date:row.reserveDate,startTime:row.startTime});scheduleDialog.value=true}
+async function reschedule(){saving.value=true;try{await api.reservationReschedule(detail.value.id,schedule);scheduleDialog.value=false;ElMessage.success('预约已改期');await load()}catch{}finally{saving.value=false}}
+onMounted(async()=>{try{rooms.value=await api.roomList()}catch{}await load()})
 </script>
+<style scoped>
+.calendar-scroll{overflow-x:auto;padding:16px 18px 0 0}.calendar-head,.calendar-row{display:flex;min-width:900px}.calendar-head{height:34px;color:#92958b;font-size:12px}.calendar-head>span,.calendar-name{width:140px;flex-shrink:0}.hours{position:relative;flex:1}.hours span{position:absolute;transform:translateX(-50%)}.calendar-name{display:flex;flex-direction:column;justify-content:center;gap:6px}.calendar-name small{color:#8a9099}.calendar-row{border-top:1px solid #eeeee8}.time-track{height:85px;position:relative;flex:1;background:repeating-linear-gradient(90deg,transparent 0,transparent calc(16.6667% - 1px),#eeeee8 calc(16.6667% - 1px),#eeeee8 16.6667%)}.booking-block{position:absolute;top:14px;height:56px;background:#f5e9d0;color:#795c2d;border:1px solid #e9d5ac;border-radius:6px;text-align:left;padding:6px;cursor:pointer;overflow:hidden}.booking-block span,.booking-block b{display:block;font-size:11px;white-space:nowrap}.booking-block.USING{background:#e3edde;color:#405b3e;border-color:#bfd2b5}.booking-block.VERIFIED{background:#eeeeea;color:#767b70;border-color:#ddded6}
+</style>
+
+<style scoped>.booking-block.PENDING{background:#fff3e1;border:1px dashed #de963f;color:#a4671b}</style>

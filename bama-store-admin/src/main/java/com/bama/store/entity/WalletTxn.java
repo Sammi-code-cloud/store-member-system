@@ -13,6 +13,10 @@ import java.math.BigDecimal;
 @EqualsAndHashCode(callSuper = true)
 @TableName("t_wallet_txn")
 public class WalletTxn extends BaseEntity {
+    @com.baomidou.mybatisplus.annotation.TableField(exist = false)
+    private String memberName;
+    @com.baomidou.mybatisplus.annotation.TableField(exist = false)
+    private String staffName;
 
     private Long memberId;
     /** 业务幂等号 */

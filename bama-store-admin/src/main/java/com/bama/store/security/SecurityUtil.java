@@ -28,4 +28,18 @@ public final class SecurityUtil {
     public static Long storeId() {
         return current().getStoreId();
     }
+
+    public static Long customerId() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getPrincipal() instanceof LoginCustomer customer) return customer.memberId();
+        throw new BusinessException(ResultCode.UNAUTHORIZED);
+    }
+
+    public static void ownCustomer(Long memberId) {
+        if (!customerId().equals(memberId)) throw new BusinessException(ResultCode.FORBIDDEN);
+    }
+
+    public static void ownStore(Long storeId) {
+        if (!java.util.Objects.equals(storeId(), storeId)) throw new BusinessException(ResultCode.FORBIDDEN);
+    }
 }

@@ -6,6 +6,8 @@
       <text class="sub">扫码收款 · 核销 · 储值</text>
     </view>
 
+    <button class="wechat-login" :loading="loading" :disabled="loading" @tap="wechat">微信登录员工端</button>
+    <view v-if="bindTicket" class="binding-note">首次微信登录，请填写已有员工账号密码完成绑定</view>
     <view class="form card">
       <view class="field">
         <text class="label">手机号</text>
@@ -16,7 +18,7 @@
         <input v-model="form.password" class="input" password placeholder="请输入密码" />
       </view>
       <view class="btn-primary submit" :class="{ disabled: loading }" @tap="submit">
-        {{ loading ? '登录中...' : '登 录' }}
+        {{ loading ? '处理中…' : bindTicket ? '验证并绑定微信' : '登 录' }}
       </view>
     </view>
 
@@ -30,16 +32,18 @@
 
 <script>
 import api from '@/common/api.js'
+import { wechatLogin, bindWechat } from '@/common/wechat.js'
 import { auth } from '@/common/store.js'
 
 export default {
   data() {
     return {
       form: { phone: '13800000001', password: '123456' },
-      loading: false
+      bindTicket: '', loading: false
     }
   },
   methods: {
+    async wechat() { if(this.loading)return;this.loading=true;try{const result=await wechatLogin('STAFF');if(result.bindRequired){this.bindTicket=result.bindTicket;this.form={phone:'',password:''};return}auth.setLogin(result.account);uni.reLaunch({url:'/pages/staff/workbench'})}catch(e){uni.showToast({title:e.message||'微信登录失败',icon:'none'})}finally{this.loading=false}},
     fill(phone, password) {
       this.form.phone = phone
       this.form.password = password
@@ -51,11 +55,12 @@ export default {
       }
       this.loading = true
       try {
-        const res = await api.login(this.form)
+        const res = this.bindTicket ? (await bindWechat(this.bindTicket,this.form.phone,this.form.password)).account : await api.login(this.form)
         auth.setLogin(res)
         uni.showToast({ title: '登录成功', icon: 'success' })
         setTimeout(() => uni.reLaunch({ url: '/pages/staff/workbench' }), 600)
       } catch (e) {
+        this.bindTicket=''
         // 错误已由 request 统一提示
       } finally {
         this.loading = false
@@ -88,4 +93,4 @@ export default {
 .acc {
   font-size: 24rpx; color: $brand; padding: 10rpx 0;
 }
-</style>
+.wechat-login{background:#368352;color:white;font-size:28rpx;line-height:96rpx;border-radius:16rpx;margin-bottom:28rpx}.binding-note{font-size:24rpx;color:#a75130;line-height:1.7;margin-bottom:22rpx}</style>

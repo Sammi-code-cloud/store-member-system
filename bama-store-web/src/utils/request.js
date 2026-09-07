@@ -12,6 +12,8 @@ const request = axios.create({
 request.interceptors.request.use(config => {
   const token = localStorage.getItem('bm_token')
   if (token) config.headers.Authorization = 'Bearer ' + token
+  const storeId = localStorage.getItem('bm_active_store')
+  if (token && storeId && !config.url.startsWith('/auth/') && config.url !== '/store' && !config.url.startsWith('/customer/')) config.headers['X-Store-Id'] = storeId
   return config
 })
 
@@ -20,6 +22,11 @@ request.interceptors.response.use(
   response => {
     const res = response.data
     if (res.code === 200) return res.data
+    if (res.code === 401) {
+      localStorage.removeItem('bm_token')
+      localStorage.removeItem('bm_user')
+      router.replace('/login')
+    }
     ElMessage.error(res.message || '请求失败')
     return Promise.reject(new Error(res.message || '请求失败'))
   },

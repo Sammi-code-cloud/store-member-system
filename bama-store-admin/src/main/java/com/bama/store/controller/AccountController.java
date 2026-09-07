@@ -40,6 +40,7 @@ public class AccountController {
      * 生成会员付款码（正式环境由顾客端小程序调用；此处供联调测试）
      */
     @PostMapping("/paycode/generate")
+    @PreAuthorize("hasAuthority('charge:scan')")
     public Result<Map<String, String>> generatePayCode(@RequestParam Long memberId) {
         return Result.success(Map.of("payCode", payCodeService.generate(memberId)));
     }

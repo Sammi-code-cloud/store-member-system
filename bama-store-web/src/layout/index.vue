@@ -21,6 +21,9 @@
     <el-container>
       <el-header class="header">
         <div class="crumb">{{ route.meta.title || '' }}</div>
+        <el-select :model-value="userStore.storeId" @change="switchStore" :disabled="!userStore.has('store:all')" style="width:260px" aria-label="当前分店">
+          <el-option v-for="s in userStore.stores" :key="s.id" :value="s.id" :label="s.name + (s.status === 0 ? '（暂停营业）' : '')" />
+        </el-select>
         <el-dropdown @command="onCommand">
           <span class="user">
             <el-icon><UserFilled /></el-icon>
@@ -37,20 +40,29 @@
       </el-header>
 
       <el-main class="main">
-        <router-view />
+        <router-view v-if="ready" :key="userStore.storeId" />
+        <el-result v-else title="正在加载分店" />
       </el-main>
     </el-container>
   </el-container>
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/store/user'
 
 const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
+const ready = ref(false)
+onMounted(async () => { await userStore.loadStores(); ready.value = true })
+async function switchStore(id) {
+  ready.value = false
+  await router.replace({path: route.path, query: {}})
+  userStore.selectStore(id)
+  ready.value = true
+}
 
 // 取出主布局下的子路由，按 group 分组，并按权限码过滤
 const menuGroups = computed(() => {

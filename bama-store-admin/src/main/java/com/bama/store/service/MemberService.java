@@ -21,14 +21,31 @@ public class MemberService {
 
     private final MemberMapper memberMapper;
     private final MemberAccountMapper memberAccountMapper;
+    private final AuditService audit;
 
     public Page<Member> page(long pageNum, long pageSize, String keyword) {
+        return page(pageNum, pageSize, keyword, null, null, null, null);
+    }
+
+    public Page<Member> page(long pageNum, long pageSize, String keyword, String level, Integer status, java.time.LocalDate startDate, java.time.LocalDate endDate) {
         LambdaQueryWrapper<Member> wrapper = new LambdaQueryWrapper<>();
         if (StringUtils.hasText(keyword)) {
-            wrapper.like(Member::getName, keyword).or().like(Member::getPhone, keyword);
+            wrapper.and(w -> w.like(Member::getName, keyword).or().like(Member::getPhone, keyword).or().like(Member::getMemberNo, keyword).or().like(Member::getUsername, keyword));
         }
+        wrapper.eq(StringUtils.hasText(level), Member::getLevel, level).eq(status != null, Member::getStatus, status);
+        if (startDate != null) wrapper.ge(Member::getCreateTime, startDate.atStartOfDay());
+        if (endDate != null) wrapper.lt(Member::getCreateTime, endDate.plusDays(1).atStartOfDay());
         wrapper.orderByDesc(Member::getId);
-        return memberMapper.selectPage(new Page<>(pageNum, pageSize), wrapper);
+        Page<Member> page = memberMapper.selectPage(new Page<>(Math.max(1, pageNum), Math.min(200, Math.max(1, pageSize))), wrapper);
+        var ids = page.getRecords().stream().map(Member::getId).toList();
+        if (!ids.isEmpty()) {
+            var accounts = memberAccountMapper.selectList(new LambdaQueryWrapper<MemberAccount>().in(MemberAccount::getMemberId, ids)).stream().collect(java.util.stream.Collectors.toMap(MemberAccount::getMemberId, a -> a));
+            for (Member m : page.getRecords()) {
+                MemberAccount account = accounts.get(m.getId());
+                if (account != null) { m.setBalance(account.getBalance()); m.setTotalConsume(account.getTotalConsume()); }
+            }
+        }
+        return page;
     }
 
     public Member getById(Long id) {
@@ -47,5 +64,17 @@ public class MemberService {
             throw new BusinessException(ResultCode.MEMBER_NOT_FOUND);
         }
         return account;
+    }
+
+    @org.springframework.transaction.annotation.Transactional
+    public void update(Long id, String name, String remark, Integer status) {
+        Member member = getById(id);
+        if (name == null || name.isBlank() || name.length() > 32) throw new BusinessException("姓名需为 1–32 字");
+        if (remark != null && remark.length() > 500) throw new BusinessException("备注最多500字");
+        if (status == null || status != 0 && status != 1) throw new BusinessException("状态无效");
+        String before = member.getName() + " / 状态" + member.getStatus() + " / " + member.getRemark();
+        Member update = new Member(); update.setId(id); update.setName(name.trim()); update.setRemark(remark == null ? "" : remark); update.setStatus(status);
+        memberMapper.updateById(update);
+        audit.record("编辑顾客", member.getMemberNo(), before + " → " + name.trim() + " / 状态" + status + " / " + update.getRemark());
     }
 }

@@ -37,6 +37,17 @@ public class GlobalExceptionHandler {
     }
 
     /** 兜底异常 */
+    @ExceptionHandler(org.springframework.dao.DuplicateKeyException.class)
+    public Result<Void> handleDuplicate(org.springframework.dao.DuplicateKeyException e) {
+        return Result.fail(ResultCode.BUSINESS_ERROR.getCode(), "记录已存在，请刷新后重试");
+    }
+
+    @ExceptionHandler({IllegalArgumentException.class, java.time.DateTimeException.class})
+    public Result<Void> handleInvalid(Exception e) {
+        return Result.fail(ResultCode.BUSINESS_ERROR.getCode(), "参数格式不正确，请检查日期、时间和数值");
+    }
+
+    /** 兜底异常 */
     @ExceptionHandler(Exception.class)
     public Result<Void> handleException(Exception e) {
         log.error("系统异常", e);

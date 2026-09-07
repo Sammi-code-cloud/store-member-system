@@ -46,8 +46,16 @@ public class StaffController {
     /** 重置密码 */
     @PutMapping("/{id}/password")
     @PreAuthorize("hasAuthority('staff:manage')")
-    public Result<Void> resetPassword(@PathVariable Long id, @RequestParam String password) {
-        staffService.resetPassword(id, password);
+    public Result<Void> resetPassword(@PathVariable Long id, @RequestBody PasswordRequest body) {
+        staffService.resetPassword(id, body.password());
         return Result.success();
+    }
+
+    public record PasswordRequest(String password) {}
+    public record UpdateRequest(String name, String phone, java.util.List<Long> roleIds) {}
+    @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('staff:manage')")
+    public Result<Void> update(@PathVariable Long id, @RequestBody UpdateRequest body) {
+        staffService.update(id, body.name(), body.phone(), body.roleIds()); return Result.success();
     }
 }

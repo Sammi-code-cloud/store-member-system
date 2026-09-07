@@ -5,7 +5,8 @@ export const BASE_URL = 'http://localhost:8080'
 
 export default function request(options) {
   return new Promise((resolve, reject) => {
-    const token = uni.getStorageSync('token')
+    const customer = options.url.startsWith('/api/customer/')
+    const token = uni.getStorageSync(customer ? 'customer_token' : 'token')
     uni.request({
       url: BASE_URL + options.url,
       method: options.method || 'GET',
@@ -24,9 +25,10 @@ export default function request(options) {
         }
         const msg = (body && body.message) || '请求失败'
         if (body && body.code === 401) {
-          uni.removeStorageSync('token')
+          uni.removeStorageSync(customer ? 'customer_token' : 'token')
+          if (customer) uni.removeStorageSync('customer_user')
           uni.showToast({ title: '登录已失效，请重新登录', icon: 'none' })
-          setTimeout(() => uni.reLaunch({ url: '/pages/staff/login' }), 800)
+          setTimeout(() => uni.reLaunch({ url: customer ? '/pages/customer/login' : '/pages/staff/login' }), 800)
         } else {
           uni.showToast({ title: msg, icon: 'none' })
         }

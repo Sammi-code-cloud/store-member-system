@@ -29,9 +29,8 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 顾客端公开接口（演示用，免登录）
- * 说明：正式环境应改为微信 openid 登录后按登录态取自己的数据，
- * 此处为让顾客端 H5 演示可直接展示真实数据而开放。
+ * 顾客端接口：公共门店资料与按身份保护的个人数据
+ * 顾客数据读写均校验服务端登录态，不接受客户端指定他人身份。
  */
 @RestController
 @RequestMapping("/api/customer")
@@ -47,19 +46,26 @@ public class CustomerController {
     private final ProductMapper productMapper;
     private final StoreMapper storeMapper;
     private final PayCodeService payCodeService;
+    private final com.bama.store.mapper.RoomClosureMapper closures;
 
     private static final Map<String, String> RESERVE_STATUS = Map.of(
-            "WAITING", "待到店", "USING", "进行中", "VERIFIED", "已完成", "CANCELLED", "已取消");
+            "PENDING", "待店员确认", "REJECTED", "店员未接受", "WAITING", "预约成功 · 待到店", "USING", "进行中", "VERIFIED", "已完成", "CANCELLED", "已取消");
 
-    /** 门店营业时段（可预定的开始时间） */
-    private static final List<String> SLOTS = List.of("10:00", "13:00", "15:00", "17:00", "19:00", "20:00");
 
     private static final Map<String, String> LEVEL_TEXT = Map.of(
             "NORMAL", "普通会员", "GOLD", "金卡会员", "BLACK_GOLD", "黑金会员");
 
     /** 会员主页信息（会员 + 账户余额） */
+    @GetMapping("/booking-contact")
+    public Result<Map<String, String>> bookingContact() {
+        Member member = memberMapper.selectById(com.bama.store.security.SecurityUtil.customerId());
+        if (member == null || !Integer.valueOf(1).equals(member.getStatus())) throw new BusinessException("顾客不存在或已停用");
+        return Result.success(Map.of("name", member.getName() == null ? "" : member.getName(), "phone", member.getPhone() == null ? "" : member.getPhone()));
+    }
+
     @GetMapping("/{memberId}")
     public Result<Map<String, Object>> home(@PathVariable Long memberId) {
+        com.bama.store.security.SecurityUtil.ownCustomer(memberId);
         Member member = memberMapper.selectById(memberId);
         if (member == null) {
             throw new BusinessException(ResultCode.MEMBER_NOT_FOUND);
@@ -84,6 +90,7 @@ public class CustomerController {
     /** 最近消费/充值流水 */
     @GetMapping("/{memberId}/records")
     public Result<List<WalletTxn>> records(@PathVariable Long memberId) {
+        com.bama.store.security.SecurityUtil.ownCustomer(memberId);
         List<WalletTxn> list = walletTxnMapper.selectList(
                 new LambdaQueryWrapper<WalletTxn>()
                         .eq(WalletTxn::getMemberId, memberId)
@@ -94,36 +101,39 @@ public class CustomerController {
 
     /** 可预定茶室 */
     @GetMapping("/rooms")
-    public Result<List<TeaRoom>> rooms() {
+    public Result<List<TeaRoom>> rooms(@RequestParam(defaultValue = "1") Long storeId) {
+        activeStore(storeId);
         return Result.success(teaRoomMapper.selectList(
-                new LambdaQueryWrapper<TeaRoom>().eq(TeaRoom::getStatus, 1).orderByAsc(TeaRoom::getId)));
+                new LambdaQueryWrapper<TeaRoom>().eq(TeaRoom::getStoreId, storeId).eq(TeaRoom::getStatus, 1).orderByAsc(TeaRoom::getSortOrder).orderByAsc(TeaRoom::getId)));
     }
 
     /** 当前门店信息（顾客端首页展示，后台可修改） */
     @GetMapping("/store")
-    public Result<Map<String, Object>> store() {
-        Store s = storeMapper.selectOne(
-                new LambdaQueryWrapper<Store>().eq(Store::getStatus, 1).orderByAsc(Store::getId).last("limit 1"));
+    public Result<Map<String, Object>> store(@RequestParam(defaultValue = "1") Long storeId) {
+        Store s = activeStore(storeId);
         Map<String, Object> m = new HashMap<>();
         if (s != null) {
             m.put("id", s.getId());
             m.put("name", s.getName());
             m.put("address", s.getAddress());
             m.put("phone", s.getPhone());
+            m.put("status", s.getStatus()); m.put("openTime", s.getOpenTime()); m.put("closeTime", s.getCloseTime()); m.put("reservationNotice", s.getReservationNotice());
         }
         return Result.success(m);
     }
 
     /** 活动 / 精选商品（上架货品） */
     @GetMapping("/products")
-    public Result<List<Product>> products() {
+    public Result<List<Product>> products(@RequestParam(defaultValue = "1") Long storeId) {
+        activeStore(storeId);
         return Result.success(productMapper.selectList(
-                new LambdaQueryWrapper<Product>().eq(Product::getStatus, 1).orderByAsc(Product::getId)));
+                new LambdaQueryWrapper<Product>().eq(Product::getStoreId, storeId).eq(Product::getStatus, 1).orderByAsc(Product::getId)));
     }
 
     /** 我的预定（含茶室名称与状态） */
     @GetMapping("/{memberId}/reservations")
     public Result<List<Map<String, Object>>> myReservations(@PathVariable Long memberId) {
+        com.bama.store.security.SecurityUtil.ownCustomer(memberId);
         List<Reservation> list = reservationMapper.selectList(
                 new LambdaQueryWrapper<Reservation>()
                         .eq(Reservation::getMemberId, memberId)
@@ -133,14 +143,19 @@ public class CustomerController {
         for (Reservation r : list) {
             TeaRoom room = teaRoomMapper.selectById(r.getRoomId());
             Map<String, Object> m = new HashMap<>();
+            m.put("id", r.getId());
             m.put("orderNo", r.getOrderNo());
-            m.put("roomName", room == null ? "茶室" : room.getName());
+            Store branch = storeMapper.selectById(r.getStoreId());
+            m.put("storeId", r.getStoreId()); m.put("storeName", branch == null ? "" : branch.getName());
+            m.put("roomName", r.getRoomName() != null ? r.getRoomName() : room == null ? "茶室" : room.getName());
             m.put("roomType", room == null ? "" : room.getRoomType());
             m.put("reserveDate", r.getReserveDate());
             m.put("startTime", r.getStartTime());
             m.put("hours", r.getHours());
             m.put("amount", r.getAmount());
             m.put("status", r.getStatus());
+            m.put("contactName", r.getContactName()); m.put("contactPhone", r.getContactPhone()); m.put("remark", r.getRemark());
+            m.put("cancelReason", r.getCancelReason());
             m.put("statusText", RESERVE_STATUS.getOrDefault(r.getStatus(), r.getStatus()));
             result.add(m);
         }
@@ -152,22 +167,9 @@ public class CustomerController {
      * 返回全部营业时段及是否可预定
      */
     @GetMapping("/rooms/{roomId}/slots")
-    public Result<List<Map<String, Object>>> slots(@PathVariable Long roomId, @RequestParam String date) {
-        LocalDate d = LocalDate.parse(date);
-        List<Reservation> taken = reservationMapper.selectList(
-                new LambdaQueryWrapper<Reservation>()
-                        .eq(Reservation::getRoomId, roomId)
-                        .eq(Reservation::getReserveDate, d)
-                        .ne(Reservation::getStatus, "CANCELLED"));
-        List<String> takenTimes = taken.stream().map(Reservation::getStartTime).toList();
-        List<Map<String, Object>> result = new java.util.ArrayList<>();
-        for (String s : SLOTS) {
-            Map<String, Object> m = new HashMap<>();
-            m.put("time", s);
-            m.put("available", !takenTimes.contains(s));
-            result.add(m);
-        }
-        return Result.success(result);
+    public Result<List<Map<String, Object>>> slots(@PathVariable Long roomId, @RequestParam String date,
+                                                 @RequestParam(defaultValue = "2") java.math.BigDecimal hours) {
+        return Result.success(reservationService.slots(roomId, LocalDate.parse(date), hours));
     }
 
     /** 某茶室某天全部已预约时段（开始–结束），用于顾客避开 */
@@ -178,7 +180,7 @@ public class CustomerController {
                 new LambdaQueryWrapper<Reservation>()
                         .eq(Reservation::getRoomId, roomId)
                         .eq(Reservation::getReserveDate, d)
-                        .ne(Reservation::getStatus, "CANCELLED")
+                        .notIn(Reservation::getStatus, "CANCELLED", "REJECTED")
                         .orderByAsc(Reservation::getStartTime));
         List<Map<String, Object>> result = new java.util.ArrayList<>();
         for (Reservation r : list) {
@@ -186,7 +188,12 @@ public class CustomerController {
             m.put("start", r.getStartTime());
             m.put("end", addHours(r.getStartTime(), r.getHours()));
             m.put("hours", r.getHours());
+            m.put("type", "PENDING".equals(r.getStatus()) ? "PENDING" : "BOOKED");
             result.add(m);
+        }
+        for (var c : closures.selectList(new LambdaQueryWrapper<com.bama.store.entity.RoomClosure>()
+                .eq(com.bama.store.entity.RoomClosure::getRoomId, roomId).eq(com.bama.store.entity.RoomClosure::getClosureDate, d))) {
+            Map<String, Object> m = new HashMap<>(); m.put("start", c.getStartTime()); m.put("end", c.getEndTime()); m.put("type", "CLOSED"); result.add(m);
         }
         return Result.success(result);
     }
@@ -205,6 +212,7 @@ public class CustomerController {
     /** 顾客按日期预定茶室（复用预定服务，唯一索引防重复占用） */
     @PostMapping("/reserve")
     public Result<String> reserve(@RequestBody Reservation reservation) {
+        reservation.setMemberId(com.bama.store.security.SecurityUtil.customerId());
         if (reservation.getMemberId() == null) {
             throw new BusinessException(ResultCode.MEMBER_NOT_FOUND);
         }
@@ -217,11 +225,28 @@ public class CustomerController {
     /** 生成本人一次性付款码 */
     @PostMapping("/{memberId}/paycode")
     public Result<Map<String, String>> paycode(@PathVariable Long memberId) {
+        com.bama.store.security.SecurityUtil.ownCustomer(memberId);
         Member member = memberMapper.selectById(memberId);
         if (member == null) {
             throw new BusinessException(ResultCode.MEMBER_NOT_FOUND);
         }
         return Result.success(Map.of("payCode", payCodeService.generate(memberId)));
+    }
+
+    @PostMapping("/reservations/{id}/cancel")
+    public Result<Void> cancel(@PathVariable Long id, @RequestBody ReservationController.CancelRequest body) {
+        reservationService.cancel(id, body.reason()); return Result.success();
+    }
+
+    @GetMapping("/stores")
+    public Result<List<Store>> stores() {
+        return Result.success(storeMapper.selectList(new LambdaQueryWrapper<Store>().eq(Store::getStatus, 1).orderByAsc(Store::getId)));
+    }
+
+    private Store activeStore(Long id) {
+        Store store = storeMapper.selectById(id);
+        if (store == null || !Integer.valueOf(1).equals(store.getStatus())) throw new BusinessException("该分店暂不营业，请选择其他分店");
+        return store;
     }
 
     private String maskPhone(String phone) {

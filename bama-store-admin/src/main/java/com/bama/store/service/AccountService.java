@@ -34,6 +34,7 @@ public class AccountService {
     private final ConsumeOrderMapper consumeOrderMapper;
     private final ConsumeItemMapper consumeItemMapper;
     private final PayCodeService payCodeService;
+    private final AuditService audit;
 
     /** 扫码解析付款码 → 会员信息（付款码一次性失效） */
     public MemberChargeInfoVo resolvePayCode(String payCode) {
@@ -42,7 +43,7 @@ public class AccountService {
             throw new BusinessException(ResultCode.PAYCODE_INVALID);
         }
         Member member = memberMapper.selectById(memberId);
-        if (member == null) {
+        if (member == null || !Integer.valueOf(1).equals(member.getStatus())) {
             throw new BusinessException(ResultCode.MEMBER_NOT_FOUND);
         }
         MemberAccount account = loadAccount(memberId);
@@ -62,7 +63,7 @@ public class AccountService {
     @Transactional(rollbackFor = Exception.class)
     public void recharge(RechargeRequest req, Long staffId, Long storeId) {
         Member member = memberMapper.selectById(req.getMemberId());
-        if (member == null) {
+        if (member == null || !Integer.valueOf(1).equals(member.getStatus())) {
             throw new BusinessException(ResultCode.MEMBER_NOT_FOUND);
         }
         MemberAccount account = loadAccount(req.getMemberId());
@@ -88,13 +89,14 @@ public class AccountService {
             saveTxn(member.getId(), OrderNoUtil.generate("GF"), "GIFT", gift,
                     afterPrincipal, after, null, staffId, storeId, "储值赠送");
         }
+        audit.record("代客充值", member.getMemberNo(), "本金 ¥" + amount + "，赠送 ¥" + gift + "，余额 " + before + " → " + after);
     }
 
     /** 扫码扣款（核心） */
     @Transactional(rollbackFor = Exception.class)
     public ChargeResultVo charge(ChargeConfirmRequest req, Long staffId, Long storeId, String staffName) {
         Member member = memberMapper.selectById(req.getMemberId());
-        if (member == null) {
+        if (member == null || !Integer.valueOf(1).equals(member.getStatus())) {
             throw new BusinessException(ResultCode.MEMBER_NOT_FOUND);
         }
 
@@ -161,6 +163,7 @@ public class AccountService {
 
         // 资金流水（携带幂等号）
         saveTxn(member.getId(), bizNo, "CONSUME", pay, before, after, orderNo, staffId, storeId, req.getRemark());
+        audit.record("消费扣款", orderNo, "顾客 " + member.getMemberNo() + "，¥" + pay + "，余额 " + before + " → " + after);
 
         ChargeResultVo vo = new ChargeResultVo();
         vo.setOrderNo(orderNo);

@@ -46,6 +46,12 @@ bama:
     expire: ${JWT_EXPIRE:43200000}
     header: Authorization
     prefix: "Bearer "
+  wechat:
+    mini-app-id: ${WECHAT_MINI_APP_ID:}
+    mini-secret: ${WECHAT_MINI_SECRET:}
+    web-app-id: ${WECHAT_WEB_APP_ID:}
+    web-secret: ${WECHAT_WEB_SECRET:}
+    web-redirect-uri: ${WECHAT_WEB_REDIRECT_URI:}
   # 会员付款码令牌有效期（秒）
   paycode:
     expire-seconds: 60

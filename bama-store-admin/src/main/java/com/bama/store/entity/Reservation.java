@@ -22,8 +22,18 @@ public class Reservation extends BaseEntity {
     private String startTime;
     private BigDecimal hours;
     private BigDecimal amount;
-    /** WAITING/USING/VERIFIED/CANCELLED */
+    /** PENDING/WAITING/USING/VERIFIED/CANCELLED/REJECTED */
     private String status;
     private Long verifyStaffId;
     private Long storeId;
+    private String roomName;
+    private String contactName;
+    private String contactPhone;
+    private Integer guests;
+    private String remark;
+    private String cancelReason;
+    private String source;
+    private BigDecimal priceHour;
+    @com.baomidou.mybatisplus.annotation.TableField(exist = false)
+    private String memberName;
 }

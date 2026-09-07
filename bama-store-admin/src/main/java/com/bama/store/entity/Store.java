@@ -15,6 +15,9 @@ public class Store extends BaseEntity {
     private String name;
     private String address;
     private String phone;
+    private String openTime;
+    private String closeTime;
+    private String reservationNotice;
     /** 1营业 0停业 */
     private Integer status;
 }

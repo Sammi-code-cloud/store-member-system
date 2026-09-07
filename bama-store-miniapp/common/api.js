@@ -1,5 +1,6 @@
 // 后端接口封装
 import request from './request.js'
+const customerId = () => uni.getStorageSync('customer_user')?.memberId
 
 // 拼接 query 参数
 function qs(params) {
@@ -11,6 +12,8 @@ function qs(params) {
 }
 
 export default {
+  reservationConfirm: id => request({url:`/api/reservations/${id}/confirm`,method:'POST'}),
+  reservationReject: (id,reason) => request({url:`/api/reservations/${id}/reject`,method:'POST',data:{reason}}),
   // ===== 认证 =====
   login: (data) => request({ url: '/api/auth/login', method: 'POST', data }),
   me: () => request({ url: '/api/auth/me' }),
@@ -45,13 +48,20 @@ export default {
   staffPage: (params) => request({ url: '/api/staff' + qs(params) }),
   roles: () => request({ url: '/api/roles' }),
 
-  // ===== 顾客端公开接口（免登录） =====
-  customerHome: (memberId) => request({ url: `/api/customer/${memberId}` }),
-  customerRecords: (memberId) => request({ url: `/api/customer/${memberId}/records` }),
-  customerRooms: () => request({ url: '/api/customer/rooms' }),
-  customerProducts: () => request({ url: '/api/customer/products' }),
-  customerReservations: (memberId) => request({ url: `/api/customer/${memberId}/reservations` }),
-  customerSlots: (roomId, date) => request({ url: `/api/customer/rooms/${roomId}/slots` + qs({ date }) }),
+  // ===== 顾客身份与个人数据 =====
+  customerLogin: data => request({ url: '/api/customer/auth/login', method: 'POST', data }),
+  customerRegister: data => request({ url: '/api/customer/auth/register', method: 'POST', data }),
+  customerCancel: (id, reason) => request({ url: `/api/customer/reservations/${id}/cancel`, method: 'POST', data: { reason } }),
+  customerHome: (memberId = customerId()) => request({ url: `/api/customer/${memberId}` }),
+  customerBookingContact: () => request({ url: '/api/customer/booking-contact' }),
+  customerRecords: (memberId = customerId()) => request({ url: `/api/customer/${memberId}/records` }),
+  customerStores: () => request({ url: '/api/customer/stores' }),
+  customerBanners: (storeId) => request({ url: '/api/customer/banners' + qs({ storeId }) }),
+  customerRooms: (storeId) => request({ url: '/api/customer/rooms' + qs({ storeId }) }),
+  customerProducts: (storeId) => request({ url: '/api/customer/products' + qs({ storeId }) }),
+  customerReservations: (memberId = customerId()) => request({ url: `/api/customer/${memberId}/reservations` }),
+  customerSlots: (roomId, date, hours = 1) => request({ url: `/api/customer/rooms/${roomId}/slots` + qs({ date, hours }) }),
+  customerReserved: (roomId, date) => request({ url: `/api/customer/rooms/${roomId}/reserved` + qs({ date }) }),
   customerReserve: (data) => request({ url: '/api/customer/reserve', method: 'POST', data }),
-  customerPaycode: (memberId) => request({ url: `/api/customer/${memberId}/paycode`, method: 'POST' })
+  customerPaycode: (memberId = customerId()) => request({ url: `/api/customer/${memberId}/paycode`, method: 'POST' })
 }

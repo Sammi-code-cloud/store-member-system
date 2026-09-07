@@ -32,11 +32,11 @@ public class DashboardService {
         DashboardVo vo = new DashboardVo();
         vo.setTotalBalance(accountMapper.sumBalance());
         vo.setMemberCount(memberMapper.selectCount(new LambdaQueryWrapper<Member>()));
-        vo.setProductCount(productMapper.selectCount(new LambdaQueryWrapper<Product>()));
+        vo.setProductCount(productMapper.selectCount(new LambdaQueryWrapper<Product>().eq(Product::getStatus, 1).eq(Product::getStoreId, com.bama.store.security.SecurityUtil.storeId())));
 
-        LocalDate today = LocalDate.now();
+        LocalDate today = BookingRules.today();
         vo.setTodayReservations(reservationMapper.selectCount(
-                new LambdaQueryWrapper<Reservation>().eq(Reservation::getReserveDate, today)));
+                new LambdaQueryWrapper<Reservation>().eq(Reservation::getReserveDate, today).eq(Reservation::getStoreId, com.bama.store.security.SecurityUtil.storeId())));
 
         LocalDateTime dayStart = today.atStartOfDay();
         LocalDateTime dayEnd = today.plusDays(1).atStartOfDay();
@@ -44,7 +44,7 @@ public class DashboardService {
                 new LambdaQueryWrapper<ConsumeOrder>()
                         .ge(ConsumeOrder::getCreateTime, dayStart)
                         .lt(ConsumeOrder::getCreateTime, dayEnd)
-                        .eq(ConsumeOrder::getStatus, "PAID"));
+                        .eq(ConsumeOrder::getStatus, "PAID").eq(ConsumeOrder::getStoreId, com.bama.store.security.SecurityUtil.storeId()));
         vo.setTodayConsumeCount(todayOrders.size());
         BigDecimal todayAmount = todayOrders.stream()
                 .map(ConsumeOrder::getPayAmount)

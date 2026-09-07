@@ -27,7 +27,7 @@
           </template>
         </el-table-column>
         <el-table-column prop="discount" label="折扣" width="90">
-          <template #default="{ row }">{{ row.discount }} 折</template>
+          <template #default="{ row }">{{ Number(row.discount) / 10 }} 折</template>
         </el-table-column>
         <el-table-column label="操作" width="100" fixed="right">
           <template #default="{ row }"><el-button link type="primary" @click.stop="onPick(row)">选择</el-button></template>
@@ -43,7 +43,7 @@
       <el-descriptions :column="2" border size="small" style="margin-bottom:18px">
         <el-descriptions-item label="会员">{{ current.name }}（{{ current.memberNo }}）</el-descriptions-item>
         <el-descriptions-item label="手机号">{{ current.phone }}</el-descriptions-item>
-        <el-descriptions-item label="等级">{{ levelText(current.level) }} · {{ current.discount }} 折</el-descriptions-item>
+        <el-descriptions-item label="等级">{{ levelText(current.level) }} · {{ Number(current.discount) / 10 }} 折</el-descriptions-item>
         <el-descriptions-item label="当前余额">
           <b class="mono" style="color:var(--bm-brand)">¥{{ account.balance ?? '-' }}</b>
         </el-descriptions-item>
@@ -84,7 +84,8 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search } from '@element-plus/icons-vue'
 import api from '@/api'
@@ -153,7 +154,13 @@ function reset() {
   loadMembers()
 }
 
-loadMembers()
+const route = useRoute()
+onMounted(async () => {
+  await loadMembers()
+  if (route.query.memberId) {
+    try { await onPick(await api.memberDetail(route.query.memberId)) } catch {}
+  }
+})
 </script>
 
 <style scoped>

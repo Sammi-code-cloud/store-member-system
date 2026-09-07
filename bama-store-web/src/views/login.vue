@@ -19,6 +19,7 @@
         <el-button type="primary" class="btn" :loading="loading" @click="onSubmit">登 录</el-button>
       </el-form>
 
+      <el-button class="wechat-btn" :loading="wechatLoading" @click="wechat">微信扫码登录</el-button>
       <div class="tip">仅限已授权的门店员工登录，账号由管理员在「员工与权限」中录入</div>
     </div>
   </div>
@@ -35,6 +36,12 @@ const router = useRouter()
 const userStore = useUserStore()
 const formRef = ref()
 const loading = ref(false)
+const wechatLoading = ref(false)
+async function wechat() {
+ if(wechatLoading.value)return
+ wechatLoading.value=true
+ try { const result=await window.WechatLogin.open('STAFF'); userStore.acceptLogin(result.account); router.replace('/dashboard') } catch(e) { ElMessage.info(e.message) } finally { wechatLoading.value=false }
+}
 const form = reactive({ phone: '', password: '' })
 const rules = {
   phone: [{ required: true, message: '请输入手机号', trigger: 'blur' }],
@@ -68,4 +75,4 @@ async function onSubmit() {
 .brand .s { font-size: 12px; color: #8a9099; margin-top: 3px; }
 .btn { width: 100%; margin-top: 4px; }
 .tip { font-size: 12px; color: #a4a9b0; margin-top: 18px; line-height: 1.6; text-align: center; }
-</style>
+.wechat-btn{width:100%;margin:16px 0 0!important;color:#368352;border-color:#bad4c1;background:#f4faf5}</style>

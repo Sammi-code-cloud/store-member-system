@@ -36,6 +36,12 @@ public class AuthService {
             throw new BusinessException(ResultCode.ACCOUNT_DISABLED);
         }
 
+        return loginById(staff.getId());
+    }
+
+    public LoginResponse loginById(Long id) {
+        Staff staff=staffMapper.selectById(id);
+        if(staff==null || !Integer.valueOf(1).equals(staff.getStatus())) throw new BusinessException(ResultCode.ACCOUNT_DISABLED);
         String token = jwtUtil.generate(staff.getId(), staff.getName());
         LoginStaff loginStaff = loginStaffService.load(staff.getId());
 
