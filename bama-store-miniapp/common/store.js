@@ -2,6 +2,7 @@
 
 export const auth = {
   setLogin(res) {
+    uni.setStorageSync('app_identity','staff')
     uni.setStorageSync('token', res.token)
     uni.setStorageSync('staff', {
       staffId: res.staffId,
@@ -20,6 +21,9 @@ export const auth = {
   isLogin() {
     return !!uni.getStorageSync('token')
   },
+  preferStaff() { return this.isLogin() && uni.getStorageSync('app_identity') !== 'customer' },
+  switchToCustomer() { uni.setStorageSync('app_identity','customer'); uni.reLaunch({url:'/pages/customer/home'}) },
+  switchToStaff() { uni.setStorageSync('app_identity','staff'); uni.reLaunch({url:this.isLogin()?'/pages/staff/workbench':'/pages/staff/login'}) },
   // 是否拥有某权限
   can(code) {
     const staff = this.getStaff()
@@ -28,5 +32,6 @@ export const auth = {
   logout() {
     uni.removeStorageSync('token')
     uni.removeStorageSync('staff')
+    uni.removeStorageSync('app_identity')
   }
 }

@@ -1,6 +1,5 @@
 <template>
   <view class="page">
-    <view class="pay-nav"><button class="back-home" @tap="backHome" aria-label="返回首页">‹ 返回首页</button></view>
     <text class="title">会员付款码</text>
     <text class="tip">请向店员出示，由员工端扫一扫收款</text>
     <view class="card">
@@ -31,7 +30,6 @@ export default {
   onHide() { this.stop() },
   onUnload() { this.stop() },
   methods: {
-    backHome() { this.stop(); uni.reLaunch({url:'/pages/customer/home'}) },
     stop() {
       this.active=false
       this.requestId++
@@ -74,8 +72,6 @@ export default {
 </script>
 <style scoped>
 .page{min-height:100vh;background:#b5362d;padding:24rpx 36rpx 60rpx;padding-top:calc(24rpx + env(safe-area-inset-top));display:flex;flex-direction:column;align-items:center}
-.pay-nav{width:100%;margin-bottom:24rpx;display:flex;justify-content:flex-start}
-.back-home{width:auto;margin:0;padding:0 20rpx;line-height:76rpx;min-height:76rpx;font-size:26rpx;background:#ffffff18;color:#fff;border:1rpx solid #ffffff40;border-radius:14rpx}
 .title{color:#fff;font-family:serif;font-size:44rpx;letter-spacing:4rpx;font-weight:600}
 .tip{color:#ffe1cc;font-size:24rpx;margin-top:16rpx;line-height:1.8;text-align:center}
 .card{background:#fffdfa;border-radius:28rpx;padding:36rpx 24rpx;width:100%;margin-top:40rpx;display:flex;flex-direction:column;align-items:center;box-shadow:0 20rpx 60rpx #6e251e33}

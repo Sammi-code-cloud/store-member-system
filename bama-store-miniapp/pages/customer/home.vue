@@ -34,6 +34,7 @@
 </template>
 
 <script>
+import { auth } from '@/common/store.js'
 import api from '@/common/api.js'
 import CustomerNav from '@/components/CustomerNav.vue'
 import { BASE_URL } from '@/common/request.js'
@@ -70,6 +71,7 @@ export default {
     this.statusBarHeight = uni.getSystemInfoSync().statusBarHeight || 20
   },
   onShow() {
+    if(auth.preferStaff()){uni.reLaunch({url:'/pages/staff/workbench'});return}
     this.bannerActive = true
     if (!uni.getStorageSync('customer_token') && !welcomeShown) {
       welcomeShown = true

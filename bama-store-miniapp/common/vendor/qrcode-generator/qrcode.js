@@ -2286,12 +2286,6 @@ var qrcode = function() {
 
 }();
 
-(function (factory) {
-  if (typeof define === 'function' && define.amd) {
-      define([], factory);
-  } else if (typeof exports === 'object') {
-      module.exports = factory();
-  }
-}(function () {
-    return qrcode;
-}));
+// Local adaptation: explicit ESM export for uni-app / WeChat's Rollup build.
+// The QR encoding implementation above is unchanged.
+export default qrcode;

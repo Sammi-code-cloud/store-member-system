@@ -4,7 +4,7 @@ const fs = require('node:fs')
 const path = require('node:path')
 const root = path.join(__dirname, 'dist')
 const port = Number(process.env.PORT || 5175)
-const api = new URL(process.env.BAMA_API_TARGET || 'http://127.0.0.1:8080')
+const api = new URL(process.env.BAMA_API_TARGET || 'http://127.0.0.1:8092')
 const server = http.createServer((req, res) => {
   if (req.url.startsWith('/api/')) {
     const upstream = http.request({ hostname: api.hostname, port: api.port || 80, path: req.url, method: req.method, headers: { ...req.headers, host: api.host } }, response => {

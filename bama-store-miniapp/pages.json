@@ -1,6 +1,13 @@
 {
   "pages": [
     {
+      "path": "pages/customer/home",
+      "style": {
+        "navigationBarTitleText": "八马茶业",
+        "navigationStyle": "custom"
+      }
+    },
+    {
       "path": "pages/role/select",
       "style": {
         "navigationBarTitleText": "八马门店",
@@ -11,13 +18,6 @@
       "path": "pages/customer/login",
       "style": {
         "navigationBarTitleText": "顾客登录"
-      }
-    },
-    {
-      "path": "pages/customer/home",
-      "style": {
-        "navigationBarTitleText": "八马茶业",
-        "navigationStyle": "custom"
       }
     },
     {
@@ -73,6 +73,12 @@
       "path": "pages/staff/dashboard",
       "style": {
         "navigationBarTitleText": "数据概览"
+      }
+    },
+    {
+      "path": "pages/staff/profile",
+      "style": {
+        "navigationBarTitleText": "员工中心"
       }
     }
   ],

@@ -13,7 +13,7 @@
     <view class="occupancy-heading"><text>当天占用</text><text class="occupancy-date">{{selDate}}</text></view>
     <text v-if="slotsLoading" class="occupancy-note">正在查询占用时段…</text>
     <view v-else-if="!occupied[r.id]" class="occupancy-error" @tap="loadSlots"><text>时段查询失败，点击重试</text></view>
-    <view v-else-if="occupied[r.id].length" class="occupancy-list">
+    <view v-else-if="(occupied[r.id] || []).length" class="occupancy-list">
      <view v-for="(slot,index) in occupiedTimes(r)" :key="slot.start+'-'+slot.end+'-'+index" class="occupancy-chip" :class="{closed:slot.type==='CLOSED'}"><text class="occupancy-dot"/><text>{{slot.start}}–{{slot.end}}</text><text class="occupancy-kind">{{slot.type==='CLOSED'?'临时关闭':slot.type==='PENDING'?'待确认占用':'已占用'}}</text></view>
     </view>
     <text v-else class="occupancy-note">暂无预约占用或临时关闭，请选择可订时间</text>
@@ -23,16 +23,39 @@
     <text v-if="slotsLoading" class="empty">正在更新可订时段…</text>
     <template v-else><view v-if="starts(r).length" class="time-row"><picker class="time-control" :range="starts(r)" range-key="time" :value="startIndex(r)" :disabled="submitting" @change="chooseStart(r,$event)"><view class="time-box"><text class="time-label">开始时间</text><text class="time-value">{{pick[r.id] || '请选择'}}<text class="chevron">⌄</text></text></view></picker><text class="time-separator">—</text><picker class="time-control" :range="options(r)" range-key="label" :value="endIndex(r)" :disabled="submitting || !pick[r.id]" @change="chooseEnd(r,$event)"><view class="time-box"><text class="time-label">结束时间</text><text class="time-value">{{ends[r.id] || '请选择'}}<text class="chevron">⌄</text></text></view></picker></view><view v-else class="empty">当天暂无可订时段，请换个日期</view>
     <text class="time-note">按半小时延长 · 已避开占用时段</text>
+<text class="approval-note">提交申请后，需店员确认才算预约成功。</text><view class="checkout"><view><text class="total-label">{{selected(r) ? '共 '+selected(r).hours+' 小时' : '请选择起止时间'}}</text><text class="total-price">¥{{amount(r)}}</text></view><button class="book" :disabled="!selected(r) || submitting" :loading="submitting" @tap="reserve(r)">立即预约</button></view></template>
+   </view>
+  </view>
+  <text class="footnote">提交后需店员确认才算预约成功，请在「我的预约」查看结果</text><CustomerNav active="rooms"/>
+
+  <view v-if="booking" class="reservation-modal" @keydown.esc="closeBooking">
+    <view class="reservation-mask" @tap="closeBooking" @touchmove.stop.prevent />
+    <view class="reservation-sheet" role="dialog" aria-modal="true" aria-label="填写并确认预约">
+      <view class="sheet-header"><view><text class="sheet-title">填写并确认预约</text><text class="sheet-subtitle">核对本次行程，留下联系方式</text></view><button class="sheet-close" :disabled="submitting" aria-label="关闭预约弹窗" @tap="closeBooking">×</button></view>
+      <scroll-view scroll-y class="sheet-body">
+        <view class="booking-summary"><text class="summary-branch">{{booking.storeName}}</text><text class="summary-room">{{booking.roomName}}</text><view class="summary-time"><text>{{booking.date}}</text><text>{{booking.time}}–{{booking.end}} · {{booking.hours}} 小时</text></view><view class="summary-price"><text>预计金额</text><text>¥{{booking.amount}}</text></view><button class="edit-time" :disabled="submitting" @tap="closeBooking">修改包间 / 时间 ›</button></view>
     <view class="contact-form">
       <text class="contact-title">预约信息</text>
       <text class="contact-hint">{{contactLoading?'正在读取账号信息…':'已保存的姓名、手机号会自动带入，可修改为本次联系人。'}}</text>
       <view class="contact-field"><text>联系人姓名 <text class="required">*</text></text><input v-model="contact.name" :disabled="submitting" maxlength="64" placeholder="请输入联系人姓名" aria-label="联系人姓名" @input="contactTouched.name=true" /></view>
       <view class="contact-field"><text>手机号 <text class="required">*</text></text><input v-model="contact.phone" :disabled="submitting" type="number" maxlength="11" placeholder="请输入11位手机号，方便店员联系" aria-label="预约手机号" @input="contactTouched.phone=true" /></view>
-      <view class="contact-field"><text>预约备注 <text class="optional">选填</text></text><textarea v-model="contact.remark" :disabled="submitting" maxlength="500" placeholder="如到店人数、茶具或其他需求" aria-label="预约备注" /><text class="remark-count">{{contact.remark.length}} / 500</text></view>
-    </view><text class="approval-note">提交申请后，需店员确认才算预约成功。</text><view class="checkout"><view><text class="total-label">{{selected(r) ? '共 '+selected(r).hours+' 小时' : '请选择起止时间'}}</text><text class="total-price">¥{{amount(r)}}</text></view><button class="book" :disabled="!selected(r) || submitting" :loading="submitting" @tap="reserve(r)">提交预约申请</button></view></template>
-   </view>
+      <view class="contact-field guest-field"><view><text>到店人数 <text class="required">*</text></text></view><view class="guest-stepper"><button :disabled="submitting || contact.guests<=1" aria-label="减少到店人数" @tap="contact.guests=Math.max(1,Number(contact.guests||1)-1)">−</button><input v-model.number="contact.guests" type="number" :disabled="submitting" maxlength="3" aria-label="到店人数" /><text>人</text><button :disabled="submitting || contact.guests>=100" aria-label="增加到店人数" @tap="contact.guests=Math.min(100,Number(contact.guests||0)+1)">＋</button></view></view>
+      <view class="contact-field"><text>预约备注 <text class="optional">选填</text></text><textarea v-model="contact.remark" :disabled="submitting" maxlength="500" placeholder="如茶具、布置或其他需求" aria-label="预约备注" /><text class="remark-count">{{contact.remark.length}} / 500</text></view>
+    </view>
+        <text class="approval-note">提交后需店员确认才算预约成功，结果可在「我的预约」查看。</text>
+      </scroll-view>
+      <text v-if="bookingError" class="booking-error" role="alert">{{bookingError}}</text>
+      <view class="sheet-footer"><button class="sheet-cancel" :disabled="submitting" @tap="closeBooking">再想想</button><button class="sheet-submit" :disabled="submitting || contactLoading" :loading="submitting" @tap="submitBooking">{{submitting?'提交中…':'确认信息并提交'}}</button></view>
+    </view>
   </view>
-  <text class="footnote">提交后需店员确认才算预约成功，请在「我的预约」查看结果</text><CustomerNav active="rooms"/>
+  <view v-if="bookingResult" class="reservation-modal">
+    <view class="reservation-mask" />
+    <view class="reservation-sheet result-sheet" role="dialog" aria-modal="true" aria-label="预约申请已提交">
+      <view class="sheet-header"><view><text class="sheet-title">预约申请已提交</text><text class="sheet-subtitle">待店员确认</text></view></view>
+      <view class="result-body"><text>{{bookingResult.storeName}} · {{bookingResult.roomName}}</text><text>{{bookingResult.date}} {{bookingResult.time}}–{{bookingResult.end}}</text><text>我们已收到您的预约申请。店员确认后才算预约成功，请在「我的预约」查看处理结果。</text></view>
+      <view class="sheet-footer"><button class="sheet-cancel" @tap="bookingResult=null">我知道了</button><button class="sheet-submit" @tap="viewReservations">查看我的预约</button></view>
+    </view>
+  </view>
  </view>
 </template>
 <script>
@@ -54,7 +77,7 @@ export default {
       ends: {}, occupied: {}, slotsLoading: false,
       pick: {},    // roomId -> time
       loading: false,
-      submitting: false, contact:{name:'',phone:'',remark:''},contactTouched:{},contactLoading:false,contactOwner:null
+      submitting: false, booking:null, bookingError:'', bookingResult:null, contact:{name:'',phone:'',remark:'',guests:1},contactTouched:{},contactLoading:false,contactOwner:null
     }
   },
   onLoad() {
@@ -66,7 +89,7 @@ export default {
     async loadContact() {
       const token=uni.getStorageSync('customer_token')
       const owner=uni.getStorageSync('customer_user')?.memberId
-      if(!token || owner!==this.contactOwner){this.contact={name:'',phone:'',remark:''};this.contactTouched={};this.contactOwner=owner}
+      if(!token || owner!==this.contactOwner){this.contact={name:'',phone:'',remark:'',guests:1};this.contactTouched={};this.contactOwner=owner}
       if(!token)return
       this.contactLoading=true
       try {
@@ -164,33 +187,45 @@ export default {
       const room = this.rooms.find(r => r.id === roomId)
       this.ends = {...this.ends, [roomId]:this.options(room)[0]?.time}
     },
-    async reserve(r) {
+    viewReservations() { this.bookingResult=null; uni.navigateTo({url:'/pages/customer/profile'}) },
+    bookingFailed(message) { this.bookingError=message },
+    closeBooking() { if(!this.submitting)this.booking=null },
+    reserve(r) {
       if (!uni.getStorageSync('customer_token')) { uni.navigateTo({url:'/pages/customer/login'}); return }
       if (this.submitting || this.slotsLoading) return
-      const time = this.pick[r.id]
-      const selection = this.selected(r)
-      if (!time || !selection) {
-        uni.showToast({ title: '请选择时段', icon: 'none' })
-        return
-      }
-      if(!this.contact.name.trim() || this.contact.name.trim().length>64)return uni.showToast({title:'请填写联系人姓名（最多64字）',icon:'none'})
-      if(!/^1[3-9]\d{9}$/.test(this.contact.phone.trim()))return uni.showToast({title:'请填写有效的11位手机号',icon:'none'})
-      if(this.contact.remark.length>500)return uni.showToast({title:'备注最多500字',icon:'none'})
+      const selection=this.selected(r),time=this.pick[r.id]
+      if(!selection || !time)return uni.showToast({title:'请选择可订时段',icon:'none'})
+      this.bookingError=''
+      this.booking={roomId:r.id,roomName:r.name,storeName:this.stores[this.storeIndex]?.name||'',date:this.selDate,time,end:this.ends[r.id],hours:selection.hours,amount:this.amount(r)}
+    },
+    async submitBooking() {
+      if(!this.booking || this.submitting)return
+      this.bookingError=''
+      const booking=this.booking
+      const name=String(this.contact.name ?? '').trim()
+      const phone=String(this.contact.phone ?? '').trim()
+      const remark=String(this.contact.remark ?? '').trim()
+
+      if(!name || name.length>64)return this.bookingFailed('请填写联系人姓名（最多64字）')
+      if(!/^1[3-9]\d{9}$/.test(phone))return this.bookingFailed('请填写有效的11位手机号')
+      if(!Number.isInteger(this.contact.guests)||this.contact.guests<1||this.contact.guests>100)return this.bookingFailed('到店人数请填写1–100的整数')
+      if(this.contact.remark.length>500)return this.bookingFailed('备注最多500字')
       this.submitting = true
       try {
         await api.customerReserve({
-          roomId: r.id,
-          reserveDate: this.selDate,
-          startTime: time,
-          hours: selection.hours,
-          contactName:this.contact.name.trim(), contactPhone:this.contact.phone.trim(), remark:this.contact.remark.trim()
+          roomId: booking.roomId,
+          reserveDate: booking.date,
+          startTime: booking.time,
+          hours: booking.hours, guests:this.contact.guests,
+          contactName:name, contactPhone:phone, remark:remark
         })
-        uni.showToast({ title: '已提交，待店员确认', icon: 'none' })
-        this.contact.remark=''
-        delete this.ends[r.id]
-        delete this.pick[r.id]
+        this.bookingResult=booking
+        this.contact.remark=''; this.contact.guests=1
+        this.booking=null
+        delete this.ends[booking.roomId]
+        delete this.pick[booking.roomId]
         this.loadSlots()
-      } catch (e) {} finally { this.submitting = false }
+      } catch (e) { this.bookingFailed(e?.message || '未能确认提交结果，请先到「我的预约」查看；若没有记录，再重试。') } finally { this.submitting = false }
     }
   }
 }
@@ -204,4 +239,25 @@ export default {
 
 <style scoped>
 .contact-form{border-top:1rpx solid #eee2d7;padding-top:24rpx;margin:8rpx 0 24rpx}.contact-title{font-size:28rpx;font-weight:600;display:block;color:#584134}.contact-hint{font-size:21rpx;color:#9a8879;line-height:1.7;display:block;margin:10rpx 0 22rpx}.contact-field{margin-bottom:22rpx;font-size:24rpx;color:#735b49}.contact-field:last-child{margin-bottom:0}.required{color:#c04c34}.optional{color:#ac9b8c;font-size:21rpx;margin-left:10rpx}.contact-field input,.contact-field textarea{display:block;width:100%;box-sizing:border-box;background:#faf7f3;border:1rpx solid #eae1d7;border-radius:12rpx;padding:18rpx 20rpx;font-size:25rpx;color:#483628;margin-top:12rpx}.contact-field input{height:84rpx}.contact-field textarea{height:154rpx;line-height:1.7}.remark-count{font-size:19rpx;color:#ac9b8c;display:block;text-align:right;margin-top:8rpx}
+</style>
+
+<style scoped>
+.reservation-modal{position:fixed;inset:0;z-index:90;display:flex;align-items:center;justify-content:center;padding:28rpx}
+.reservation-mask{position:absolute;inset:0;background:#2e201b80}
+.reservation-sheet{position:relative;width:100%;max-width:680rpx;max-height:92vh;background:#fffaf4;border-radius:30rpx;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24rpx 100rpx #26120f40}
+.sheet-header{padding:28rpx 28rpx 22rpx;display:flex;justify-content:space-between;align-items:center;border-bottom:1rpx solid #eee1d4;flex-shrink:0}
+.sheet-title{display:block;font-size:34rpx;font-family:serif;font-weight:600;color:#54392c}.sheet-subtitle{display:block;font-size:21rpx;color:#a18a79;margin-top:8rpx}
+.sheet-close{width:60rpx;height:60rpx;line-height:60rpx;padding:0;margin:0;background:#f7ece1;color:#8c6d58;border-radius:50%;font-size:36rpx;flex-shrink:0}
+.sheet-body{min-height:0;max-height:65vh;box-sizing:border-box;padding:24rpx 28rpx;overflow-y:auto;overscroll-behavior:contain}
+.booking-summary{background:#fff0e1;border:1rpx solid #f0d8c1;border-radius:18rpx;padding:22rpx}.summary-branch{display:block;font-size:21rpx;color:#9d7355}.summary-room{display:block;font-size:29rpx;font-weight:600;margin:8rpx 0 14rpx;color:#673f29}.summary-time{display:flex;flex-wrap:wrap;gap:8rpx 20rpx;font-size:23rpx;color:#815d43;line-height:1.7}.summary-price{display:flex;justify-content:space-between;margin-top:16rpx;font-size:25rpx;color:#b6442f}.edit-time{width:auto;margin:12rpx 0 0;padding:0;background:transparent;text-align:left;color:#a97550;font-size:21rpx;line-height:1.8}
+.sheet-footer{padding:22rpx 28rpx;padding-bottom:calc(22rpx + env(safe-area-inset-bottom));display:flex;gap:18rpx;border-top:1rpx solid #eee1d4;background:#fffaf4;flex-shrink:0}.sheet-footer button{line-height:84rpx;margin:0;border-radius:14rpx;font-size:25rpx}.sheet-cancel{width:150rpx;background:#f4e9dd;color:#8e7059;flex-shrink:0}.sheet-submit{flex:1;background:linear-gradient(110deg,#bd3b2c,#dc6639);color:white}
+.reservation-sheet .contact-form{border-top:0;margin:0 0 20rpx}.reservation-sheet .contact-title{display:none}.reservation-sheet .contact-hint{margin-top:0;font-size:20rpx}.reservation-sheet .contact-field{margin-bottom:18rpx}.reservation-sheet .contact-field input{height:74rpx}.reservation-sheet .contact-field textarea{height:112rpx}.reservation-sheet .approval-note{margin-bottom:0}
+</style>
+
+<style scoped>
+.guest-field{display:flex;align-items:center;justify-content:space-between;gap:16rpx}.guest-stepper{display:flex;align-items:center;gap:8rpx;border:1rpx solid #eadccc;background:#fff;border-radius:12rpx;padding:4rpx;flex-shrink:0}.guest-stepper button{width:54rpx;height:58rpx;line-height:58rpx;padding:0;margin:0;border-radius:8rpx;font-size:28rpx;background:#fff0e1;color:#b54b31}.reservation-sheet .guest-stepper input{width:58rpx;height:58rpx;padding:0;margin:0;border:0;background:transparent;border-radius:0;text-align:center;font-size:26rpx}.guest-stepper>text{font-size:21rpx;color:#947b67;margin-right:6rpx}
+</style>
+
+<style scoped>
+.booking-error{display:block;flex-shrink:0;margin:0 28rpx;padding:18rpx 20rpx;background:#fff0e8;border:1rpx solid #edc4b5;border-radius:12rpx;color:#ad3828;font-size:23rpx;line-height:1.6}.result-body{padding:12rpx 32rpx 28rpx;display:flex;flex-direction:column;gap:20rpx;color:#735b49;font-size:25rpx;line-height:1.8}
 </style>

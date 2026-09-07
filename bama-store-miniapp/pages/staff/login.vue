@@ -22,11 +22,8 @@
       </view>
     </view>
 
-    <view class="hint">
-      <text>演示账号</text>
-      <text class="acc" @tap="fill('13800000000', 'admin123')">店长 13800000000 / admin123</text>
-      <text class="acc" @tap="fill('13800000001', '123456')">收银员 13800000001 / 123456</text>
-    </view>
+    <text class="staff-note">使用门店管理员分配的员工账号登录</text>
+    <button class="customer-return" @tap="backToCustomer">返回顾客首页</button>
   </view>
 </template>
 
@@ -38,17 +35,19 @@ import { auth } from '@/common/store.js'
 export default {
   data() {
     return {
-      form: { phone: '13800000001', password: '123456' },
+      form: { phone: '', password: '' },
       bindTicket: '', loading: false
     }
   },
   methods: {
+    backToCustomer(){auth.switchToCustomer()},
     async wechat() { if(this.loading)return;this.loading=true;try{const result=await wechatLogin('STAFF');if(result.bindRequired){this.bindTicket=result.bindTicket;this.form={phone:'',password:''};return}auth.setLogin(result.account);uni.reLaunch({url:'/pages/staff/workbench'})}catch(e){uni.showToast({title:e.message||'微信登录失败',icon:'none'})}finally{this.loading=false}},
     fill(phone, password) {
       this.form.phone = phone
       this.form.password = password
     },
     async submit() {
+      if(this.loading)return
       if (!this.form.phone || !this.form.password) {
         uni.showToast({ title: '请输入账号和密码', icon: 'none' })
         return
@@ -94,3 +93,5 @@ export default {
   font-size: 24rpx; color: $brand; padding: 10rpx 0;
 }
 .wechat-login{background:#368352;color:white;font-size:28rpx;line-height:96rpx;border-radius:16rpx;margin-bottom:28rpx}.binding-note{font-size:24rpx;color:#a75130;line-height:1.7;margin-bottom:22rpx}</style>
+
+<style scoped>.staff-note{display:block;text-align:center;color:#998778;font-size:23rpx;margin-top:28rpx}.customer-return{background:transparent;color:#9a7461;font-size:24rpx;margin-top:28rpx}</style>

@@ -1,7 +1,7 @@
 // 网络请求封装（基于 uni.request）
 
 // 后端地址：本地联调用 localhost；真机 / 微信小程序需换成已备案的 https 域名
-export const BASE_URL = 'http://localhost:8080'
+export const BASE_URL = 'http://localhost:8092'
 
 export default function request(options) {
   return new Promise((resolve, reject) => {

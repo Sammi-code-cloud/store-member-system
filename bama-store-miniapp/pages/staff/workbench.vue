@@ -7,7 +7,7 @@
           <view class="seal">馬</view>
           <text class="bname">员工工作台</text>
         </view>
-        <text class="who" @tap="logout">{{ staff.name }} ▾</text>
+        <text class="who" @tap="go('/pages/staff/profile')">{{ staff.name }} · 我的 ›</text>
       </view>
 
       <view class="today">
@@ -16,6 +16,7 @@
         <text class="sub">消费 {{ todayCount }} 笔 · 预定 {{ todayReservations }} 单</text>
       </view>
     </view>
+
 
     <view class="quad">
       <view class="qi" @tap="go('/pages/staff/scan')">
@@ -38,7 +39,7 @@
       <view v-if="!pending.length" class="empty">暂无待确认申请</view>
       <view v-for="r in pending" :key="r.id" class="pending-card card">
         <text class="pending-title">{{r.roomName}} · {{r.contactName || r.memberName}}</text>
-        <text class="pending-note">{{r.reserveDate}} {{r.startTime}} · {{r.hours}}小时 · ¥{{r.amount}}</text>
+        <text class="pending-note">{{r.reserveDate}} {{r.startTime}} · {{r.hours}}小时 · {{r.guests || 1}}人 · ¥{{r.amount}}</text>
         <text v-if="r.contactPhone" class="pending-note">联系电话：{{r.contactPhone}}</text><text v-if="r.remark" class="pending-note">备注：{{r.remark}}</text>
         <view class="pending-actions"><button :disabled="processing" @tap="approve(r)">确认预约</button><button :disabled="processing" @tap="rejectId=r.id;rejectReason=''">拒绝</button></view>
         <view v-if="rejectId===r.id"><textarea v-model="rejectReason" maxlength="255" placeholder="请填写拒绝原因，顾客可见" class="reject-input"/><view class="pending-actions"><button :disabled="processing" @tap="reject(r)">提交拒绝</button><button :disabled="processing" @tap="rejectId=null">返回</button></view></view>
@@ -60,14 +61,17 @@
         <view class="verify" @tap="verify(r)">核销</view>
       </view>
     </view>
+    <StaffNav active="workbench" />
   </view>
 </template>
 
 <script>
 import api from '@/common/api.js'
+import StaffNav from '@/components/StaffNav.vue'
 import { auth } from '@/common/store.js'
 
 export default {
+  components:{StaffNav},
   data() {
     return {
       statusBarHeight: 20,
@@ -91,6 +95,7 @@ export default {
     this.loadData()
   },
   methods: {
+
     go(url) { uni.navigateTo({ url }) },
     async loadData() {
       if(this.canManage)this.loadPending()
@@ -180,3 +185,7 @@ export default {
 </style>
 
 <style scoped>.pending-card{padding:26rpx;margin-bottom:20rpx}.pending-title{display:block;font-size:28rpx;color:#5e3f31}.pending-note{display:block;font-size:23rpx;color:#9a806c;line-height:1.8;margin:10rpx 0}.pending-actions{display:flex;align-items:center;gap:16rpx;margin-top:16rpx}.pending-actions button{font-size:24rpx;background:#fff1e3;color:#ad3e2b;border-radius:10rpx;flex:1}.reject-input{background:#fff8f1;border:1rpx solid #ecddcf;padding:18rpx;height:140rpx;width:100%;box-sizing:border-box;font-size:24rpx;margin-top:18rpx}</style>
+
+<style scoped>.customer-return{background:transparent;color:#917761;text-align:right;font-size:23rpx;margin:12rpx 0;padding:0 32rpx}</style>
+
+<style scoped>.page{padding-bottom:160rpx}</style>

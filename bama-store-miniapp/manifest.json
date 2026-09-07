@@ -11,14 +11,16 @@
     "compilerVersion": 3,
     "modules": {},
     "distribute": {
-      "android": { "permissions": [] },
+      "android": {
+        "permissions": []
+      },
       "ios": {},
       "sdkConfigs": {}
     }
   },
   "quickapp": {},
   "mp-weixin": {
-    "appid": "",
+    "appid": "wxd2edae0de195332a",
     "setting": {
       "urlCheck": false,
       "es6": true,
@@ -29,7 +31,9 @@
   },
   "h5": {
     "title": "八马门店",
-    "router": { "mode": "hash" }
+    "router": {
+      "mode": "hash"
+    }
   },
   "vueVersion": "3"
 }
