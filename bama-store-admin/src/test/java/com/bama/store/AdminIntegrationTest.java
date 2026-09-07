@@ -31,6 +31,39 @@ class AdminIntegrationTest {
         admin = data(call("POST", "/api/auth/login", null, Map.of("phone", "13800000000", "password", "admin123"))).path("token").asText();
     }
     private String unique() { return "test_" + UUID.randomUUID().toString().replace("-", "").substring(0, 16); }
+
+    @Test void assignedBranchesLimitReadsWritesAndRevocationAppliesToExistingToken() throws Exception {
+        long branch = data(call("POST", "/api/store", admin, Map.of("name", unique(), "status", 1, "openTime", "10:00", "closeTime", "22:00"))).asLong();
+        long other = data(call("POST", "/api/store", admin, Map.of("name", unique(), "status", 1, "openTime", "10:00", "closeTime", "22:00"))).asLong();
+        String phone = "139" + String.format("%08d", Math.abs(UUID.randomUUID().getLeastSignificantBits() % 100000000));
+        long id = data(call("POST", "/api/staff", admin, Map.of("name", "跨店店长", "phone", phone, "password", "employee123", "roleIds", List.of(1), "storeIds", List.of(1, branch)))).asLong();
+        String token = data(call("POST", "/api/auth/login", null, Map.of("phone", phone, "password", "employee123"))).path("token").asText();
+        var visible = data(call("GET", "/api/store", token, null));
+        assertThat(visible.size()).isEqualTo(2);
+        assertThat(data(branchCall("GET", "/api/store", token, branch, null))).isEqualTo(visible);
+        assertThat(data(branchCall("GET", "/api/staff?keyword=" + phone, admin, branch, null)).path("total").asInt()).isEqualTo(1);
+        long homeRoom = room();
+        long branchRoom = data(branchCall("POST", "/api/rooms", token, branch, Map.of("name", "授权分店茶室", "priceHour", 100, "status", 1))).asLong();
+        var rooms = data(branchCall("GET", "/api/rooms", token, branch, null));
+        assertThat(rooms.size()).isEqualTo(1);
+        assertThat(rooms.get(0).path("id").asLong()).isEqualTo(branchRoom);
+        assertThat(branchCall("DELETE", "/api/rooms/" + homeRoom, token, branch, null).path("code").asInt()).isEqualTo(403);
+        for (String path : List.of("/api/rooms", "/api/products", "/api/reservations", "/api/transactions", "/api/reports", "/api/staff"))
+            assertThat(branchCall("GET", path, token, other, null).path("code").asInt()).isEqualTo(403);
+        assertThat(branchCall("POST", "/api/rooms", token, other, Map.of("name", "越权写入", "priceHour", 100)).path("code").asInt()).isEqualTo(403);
+        // Even a store manager cannot grant a branch outside their own scope.
+        assertThat(call("PUT", "/api/staff/" + id, token, Map.of("name", "跨店店长", "phone", phone, "roleIds", List.of(1), "storeIds", List.of(1, other))).path("code").asInt()).isNotEqualTo(200);
+        assertThat(call("PUT", "/api/staff/" + id, admin, Map.of("name", "跨店店长", "phone", phone, "roleIds", List.of(1), "storeIds", List.of())).path("code").asInt()).isNotEqualTo(200);
+        assertThat(call("PUT", "/api/staff/" + id, admin, Map.of("name", "跨店店长", "phone", phone, "roleIds", List.of(1), "storeIds", List.of(branch))).path("code").asInt()).isNotEqualTo(200);
+        // Profile-only clients preserve grants; repeat upgrades must also preserve grants.
+        data(call("PUT", "/api/staff/" + id, admin, Map.of("name", "跨店店长", "phone", phone, "roleIds", List.of(1))));
+        upgrade.run(null);
+        data(branchCall("GET", "/api/rooms", token, branch, null));
+        data(call("PUT", "/api/staff/" + id, admin, Map.of("name", "跨店店长", "phone", phone, "roleIds", List.of(1), "storeIds", List.of(1))));
+        assertThat(branchCall("GET", "/api/rooms", token, branch, null).path("code").asInt()).isEqualTo(403);
+        assertThat(data(call("GET", "/api/store", token, null)).size()).isEqualTo(1);
+        assertThat(data(branchCall("GET", "/api/staff?keyword=" + phone, admin, branch, null)).path("total").asInt()).isZero();
+    }
     @Test void bannersSupportImagesVisibilityAndStoreIsolation() throws Exception {
         var pixels=new java.awt.image.BufferedImage(200,100,java.awt.image.BufferedImage.TYPE_INT_RGB);
         var png=new java.io.ByteArrayOutputStream();

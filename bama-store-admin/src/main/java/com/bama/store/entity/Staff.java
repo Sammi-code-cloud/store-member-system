@@ -21,6 +21,12 @@ public class Staff extends BaseEntity {
     private java.util.List<Long> roleIds;
     @com.baomidou.mybatisplus.annotation.TableField(exist = false)
     private java.util.List<String> roleNames;
+    @com.baomidou.mybatisplus.annotation.TableField(exist = false)
+    private java.util.List<Long> storeIds;
+    @com.baomidou.mybatisplus.annotation.TableField(exist = false)
+    private java.util.List<String> storeNames;
+    @com.baomidou.mybatisplus.annotation.TableField(exist = false)
+    private boolean allStores;
     private Long storeId;
     /** 1在职 0停用 */
     private Integer status;

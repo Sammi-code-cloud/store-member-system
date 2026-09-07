@@ -29,7 +29,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtUtil jwtUtil;
     private final LoginStaffService loginStaffService;
     private final com.bama.store.mapper.MemberMapper memberMapper;
-    private final com.bama.store.mapper.StoreMapper storeMapper;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
@@ -48,8 +47,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     if (StringUtils.hasText(selected)) {
                         Long storeId = null;
                         try { storeId = Long.valueOf(selected); } catch (NumberFormatException ignored) { }
-                        if (storeId == null || (!storeId.equals(loginStaff.getStoreId())
-                                && !loginStaff.getPermissions().contains("store:all")) || storeMapper.selectById(storeId) == null) {
+                        if (storeId == null || !loginStaff.getStoreIds().contains(storeId)) {
                             response.setContentType("application/json;charset=UTF-8");
                             response.getWriter().write("{\"code\":403,\"message\":\"无权访问该分店\",\"data\":null}");
                             return;

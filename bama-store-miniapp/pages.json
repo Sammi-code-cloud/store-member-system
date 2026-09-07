@@ -8,6 +8,14 @@
       }
     },
     {
+      "path": "pages/customer/bind-phone",
+      "style": { "navigationBarTitleText": "绑定手机号" }
+    },
+    {
+      "path": "pages/customer/entry",
+      "style": { "navigationBarTitleText": "微信扫码登录" }
+    },
+    {
       "path": "pages/role/select",
       "style": {
         "navigationBarTitleText": "八马门店",

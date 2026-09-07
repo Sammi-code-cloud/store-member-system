@@ -22,9 +22,15 @@ export const useUserStore = defineStore('user', {
     async loadStores() {
       this.stores = await api.storeList()
       const valid = this.stores.some(s => s.id === this.activeStoreId)
-      this.selectStore(valid ? this.activeStoreId : this.user.storeId)
+      const fallback = this.stores.find(s => s.id === this.user?.storeId) || this.stores[0]
+      this.selectStore(valid ? this.activeStoreId : fallback?.id)
     },
     selectStore(id) {
+      if (id == null) {
+        this.activeStoreId = null
+        localStorage.removeItem('bm_active_store')
+        return
+      }
       this.activeStoreId = Number(id)
       localStorage.setItem('bm_active_store', String(id))
     },

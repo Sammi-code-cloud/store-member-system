@@ -24,14 +24,23 @@ public class StaffService {
     private final PermissionMapper permissions;
     private final PasswordEncoder passwordEncoder;
     private final AuditService audit;
+    private final StaffStoreService staffStores;
+    private final StoreMapper stores;
 
     public Page<Staff> page(long pageNum, long pageSize, String keyword) {
-        var q = new LambdaQueryWrapper<Staff>().eq(Staff::getStoreId, SecurityUtil.storeId());
+        var assigned = staffStores.staffInStore(SecurityUtil.storeId());
+        var q = new LambdaQueryWrapper<Staff>().and(w -> {
+            w.eq(Staff::getStoreId, SecurityUtil.storeId());
+            if (!assigned.isEmpty()) w.or().in(Staff::getId, assigned);
+        });
         if (keyword != null && !keyword.isBlank()) q.and(w -> w.like(Staff::getName, keyword).or().like(Staff::getPhone, keyword).or().like(Staff::getStaffNo, keyword));
         var page = staffMapper.selectPage(new Page<Staff>(Math.max(1, pageNum), Math.min(200, Math.max(1, pageSize))), q.orderByDesc(Staff::getId));
         for (Staff staff : page.getRecords()) {
             var ids = staffRoleMapper.selectList(new LambdaQueryWrapper<StaffRole>().eq(StaffRole::getStaffId, staff.getId())).stream().map(StaffRole::getRoleId).toList();
             staff.setRoleIds(ids); staff.setRoleNames(ids.isEmpty() ? List.of() : roleMapper.selectBatchIds(ids).stream().map(Role::getName).toList());
+            staff.setStoreIds(staffStores.assigned(staff));
+            staff.setStoreNames(stores.selectBatchIds(staff.getStoreIds()).stream().map(Store::getName).toList());
+            staff.setAllStores(permissions.selectPermissionCodesByStaffId(staff.getId()).contains("store:all"));
         }
         return page;
     }
@@ -52,7 +61,9 @@ public class StaffService {
     private Staff require(Long id) {
         Staff staff = staffMapper.selectById(id);
         if (staff == null) throw new BusinessException("员工不存在");
-        SecurityUtil.ownStore(staff.getStoreId());
+        if (!staffStores.assigned(staff).contains(SecurityUtil.storeId()))
+            throw new BusinessException(com.bama.store.common.ResultCode.FORBIDDEN);
+        staffStores.requireManageable(staff);
         var targetCodes = permissions.selectPermissionCodesByStaffId(id);
         if (!SecurityUtil.current().getPermissions().containsAll(targetCodes))
             throw new BusinessException(com.bama.store.common.ResultCode.FORBIDDEN);
@@ -69,18 +80,23 @@ public class StaffService {
     @Transactional
     public Long create(StaffCreateRequest req) {
         validate(req.getName(), req.getPhone(), req.getRoleIds(), null); password(req.getPassword());
+        var storeIds = staffStores.validate(req.getStoreIds() == null ? List.of(SecurityUtil.storeId()) : req.getStoreIds(), SecurityUtil.storeId());
         Staff staff = new Staff(); staff.setStaffNo(OrderNoUtil.generate("BM")); staff.setName(req.getName().trim()); staff.setPhone(req.getPhone());
         staff.setPassword(passwordEncoder.encode(req.getPassword())); staff.setStoreId(SecurityUtil.storeId()); staff.setStatus(1);
         staffMapper.insert(staff); assign(staff.getId(), req.getRoleIds());
-        audit.record("添加员工", staff.getStaffNo(), staff.getName() + "，角色 " + req.getRoleIds()); return staff.getId();
+        staffStores.assign(staff.getId(), storeIds);
+        audit.record("添加员工", staff.getStaffNo(), staff.getName() + "，角色 " + req.getRoleIds() + "，分店 " + storeIds); return staff.getId();
     }
 
     @Transactional
-    public void update(Long id, String name, String phone, List<Long> roleIds) {
+    public void update(Long id, String name, String phone, List<Long> roleIds, List<Long> requestedStores) {
         Staff staff = require(id); validate(name, phone, roleIds, id);
+        var beforeStores = staffStores.assigned(staff);
+        var storeIds = staffStores.validate(requestedStores == null ? beforeStores : requestedStores, staff.getStoreId());
         String before = staff.getName() + " / " + staff.getPhone() + " / 角色 " + staffRoleMapper.selectList(new LambdaQueryWrapper<StaffRole>().eq(StaffRole::getStaffId, id)).stream().map(StaffRole::getRoleId).toList();
         staff.setName(name.trim()); staff.setPhone(phone); staffMapper.updateById(staff); assign(id, roleIds);
-        audit.record("编辑员工", staff.getStaffNo(), before + " → " + name.trim() + " / " + phone + " / 角色 " + roleIds);
+        staffStores.assign(id, storeIds);
+        audit.record("编辑员工", staff.getStaffNo(), before + " / 分店 " + beforeStores + " → " + name.trim() + " / " + phone + " / 角色 " + roleIds + " / 分店 " + storeIds);
     }
 
     @Transactional

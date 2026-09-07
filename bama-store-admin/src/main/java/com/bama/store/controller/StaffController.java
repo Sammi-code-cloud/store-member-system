@@ -52,10 +52,10 @@ public class StaffController {
     }
 
     public record PasswordRequest(String password) {}
-    public record UpdateRequest(String name, String phone, java.util.List<Long> roleIds) {}
+    public record UpdateRequest(String name, String phone, java.util.List<Long> roleIds, java.util.List<Long> storeIds) {}
     @PutMapping("/{id}")
     @PreAuthorize("hasAuthority('staff:manage')")
     public Result<Void> update(@PathVariable Long id, @RequestBody UpdateRequest body) {
-        staffService.update(id, body.name(), body.phone(), body.roleIds()); return Result.success();
+        staffService.update(id, body.name(), body.phone(), body.roleIds(), body.storeIds()); return Result.success();
     }
 }

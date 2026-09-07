@@ -62,6 +62,7 @@ export const api = {
 
   // ---------- 门店 ----------
   storeList: () => request.get('/store'),
+  storeMiniCode: id => request.get(`/store/${id}/mini-code`),
   storeCreate: data => request.post('/store', data),
   storeDetail: id => request.get(`/store/${id}`),
   storeUpdate: (id, data) => request.put(`/store/${id}`, data)

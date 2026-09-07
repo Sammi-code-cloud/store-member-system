@@ -1,6 +1,12 @@
 // 简易登录态管理（基于本地存储）
 
 export const auth = {
+  setCustomerLogin(res) {
+    if (!res?.token || !res?.memberId) throw new Error('微信登录结果无效，请重试')
+    uni.setStorageSync('app_identity', 'customer')
+    uni.setStorageSync('customer_token', res.token)
+    uni.setStorageSync('customer_user', { memberId: res.memberId, name: res.name })
+  },
   setLogin(res) {
     uni.setStorageSync('app_identity','staff')
     uni.setStorageSync('token', res.token)

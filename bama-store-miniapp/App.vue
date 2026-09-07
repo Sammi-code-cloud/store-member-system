@@ -1,5 +1,7 @@
 <script>
+import { rememberScan } from './common/scan-entry.mjs'
 export default {
+  onShow(options) { rememberScan(options, uni) },
   onLaunch() {
     console.log('八马门店小程序启动')
   }

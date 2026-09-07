@@ -17,6 +17,7 @@ public class LoginStaffService {
 
     private final StaffMapper staffMapper;
     private final PermissionMapper permissionMapper;
+    private final com.bama.store.service.StaffStoreService staffStores;
 
     /** 加载登录态；员工不存在或已停用返回 null */
     public LoginStaff load(Long staffId) {
@@ -31,6 +32,7 @@ public class LoginStaffService {
         loginStaff.setPhone(staff.getPhone());
         loginStaff.setStoreId(staff.getStoreId());
         loginStaff.setPermissions(new HashSet<>(permissionMapper.selectPermissionCodesByStaffId(staffId)));
+        loginStaff.setStoreIds(staffStores.accessible(staff, loginStaff.getPermissions()));
         return loginStaff;
     }
 }

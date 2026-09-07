@@ -23,6 +23,7 @@ public class AdminSchemaUpgrade implements ApplicationRunner {
     @Override
     public void run(ApplicationArguments args) throws Exception {
         try (Connection connection = dataSource.getConnection()) {
+            jdbc.execute("CREATE TABLE IF NOT EXISTS t_staff_store (staff_id BIGINT NOT NULL, store_id BIGINT NOT NULL, PRIMARY KEY (staff_id, store_id))");
             boolean h2 = connection.getMetaData().getDatabaseProductName().equals("H2");
             add(connection, "t_member", Map.of("username", "VARCHAR(40)", "password", "VARCHAR(100)",
                     "last_login_time", "TIMESTAMP NULL", "remark", "VARCHAR(500)"));

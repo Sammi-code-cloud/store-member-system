@@ -11,17 +11,18 @@
 import api from '@/common/api.js'
 import { auth } from '@/common/store.js'
 import { wechatLogin } from '@/common/wechat.js'
+import { completeCustomerWechat } from '@/common/customer-wechat.js'
 export default {
   data(){return{register:false,wechatLoading:false,loading:false,confirmPassword:'',form:{username:'',password:'',name:''}}},
   onLoad(options){this.register=options?.mode==='register'},
   methods:{
     staffLogin(){auth.switchToStaff()},
-    async wechat(){if(this.wechatLoading || this.loading)return;this.wechatLoading=true;try{const result=await wechatLogin('CUSTOMER');const user=result.account;uni.setStorageSync('customer_token',user.token);uni.setStorageSync('customer_user',{memberId:user.memberId,name:user.name});uni.reLaunch({url:'/pages/customer/home'})}catch(e){uni.showToast({title:e.message||'微信登录失败',icon:'none'})}finally{this.wechatLoading=false}},
+    async wechat(){if(this.wechatLoading || this.loading)return;this.wechatLoading=true;try{const result=await wechatLogin('CUSTOMER');if(completeCustomerWechat(result))uni.reLaunch({url:'/pages/customer/home'})}catch(e){uni.showToast({title:e.message||'微信登录失败',icon:'none'})}finally{this.wechatLoading=false}},
     async submit(){
     if(!/^[a-zA-Z0-9_]{4,32}$/.test(this.form.username.trim()))return uni.showToast({title:'账号需为4–32位字母、数字或下划线',icon:'none'})
     if(this.register&&(!this.form.name.trim()||this.form.password.length<8||this.form.password!==this.confirmPassword))return uni.showToast({title:'请填写称呼和至少8位密码，并确认两次密码一致',icon:'none'})
     this.loading=true
-    try{const user=await(this.register?api.customerRegister(this.form):api.customerLogin(this.form));uni.setStorageSync('customer_token',user.token);uni.setStorageSync('customer_user',{memberId:user.memberId,name:user.name});uni.reLaunch({url:'/pages/customer/home'})}catch{}finally{this.loading=false}
+    try{const user=await(this.register?api.customerRegister(this.form):api.customerLogin(this.form));auth.setCustomerLogin(user);uni.reLaunch({url:'/pages/customer/home'})}catch{}finally{this.loading=false}
   }}
 }
 </script>

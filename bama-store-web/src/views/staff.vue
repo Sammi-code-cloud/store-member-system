@@ -1,6 +1,6 @@
 <template>
   <div class="page-card">
-    <h3 class="page-title">员工与权限 <span class="page-sub">添加员工、维护资料和分配角色；停用后立即停止访问</span></h3>
+    <h3 class="page-title">员工与权限 <span class="page-sub">维护员工资料、角色和可访问分店；权限变更立即生效</span></h3>
 
     <div class="search-bar">
       <el-input v-model="keyword" placeholder="姓名 / 手机号 / 工号" clearable
@@ -17,6 +17,12 @@
       <el-table-column prop="name" label="姓名" width="120" />
       <el-table-column prop="phone" label="手机号（登录账号）" width="180" />
       <el-table-column label="角色" min-width="170"><template #default="{ row }"><el-tag v-for="name in row.roleNames" :key="name" size="small" style="margin:2px">{{ name }}</el-tag></template></el-table-column>
+      <el-table-column label="可访问分店" min-width="200">
+        <template #default="{ row }">
+          <el-tag v-if="row.allStores" size="small" type="warning">全部分店（总部权限）</el-tag>
+          <template v-else><el-tag v-for="name in row.storeNames" :key="name" size="small" style="margin:2px">{{ name }}</el-tag></template>
+        </template>
+      </el-table-column>
       <el-table-column label="状态" width="110">
         <template #default="{ row }">
           <el-switch :model-value="row.status === 1" :disabled="!userStore.has('staff:manage')"
@@ -52,6 +58,14 @@
           <el-select v-model="form.roleIds" multiple placeholder="可多选" style="width:100%">
             <el-option v-for="r in roles" :key="r.id" :label="r.name + '（' + r.remark + '）'" :value="r.id" />
           </el-select>
+        </el-form-item>
+        <el-form-item label="可访问分店" required>
+          <el-select v-model="form.storeIds" multiple placeholder="选择员工可切换的分店" style="width:100%">
+            <el-option v-for="s in userStore.stores" :key="s.id" :value="s.id"
+                       :label="s.name + (s.id === form.homeStoreId ? '（所属分店）' : '')" :disabled="s.id === form.homeStoreId" />
+          </el-select>
+          <p class="scope-tip">所属分店始终保留。只能授予你有权访问的分店，员工切换后查看对应分店的数据。</p>
+          <p v-if="hasHeadquartersRole" class="scope-tip">总部管理员角色可访问全部分店（含以后新增的分店）；多选范围用于移除总部角色后的访问权限。</p>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -93,7 +107,8 @@ const permDrawer = ref(false)
 const roles = ref([])
 const permissions = ref([])
 
-const form = reactive({ id: null, name: '', phone: '', password: '', roleIds: [] })
+const form = reactive({ id: null, name: '', phone: '', password: '', roleIds: [], storeIds: [], homeStoreId: null })
+const hasHeadquartersRole = computed(() => roles.value.some(r => r.code === 'HEADQUARTERS' && form.roleIds.includes(r.id)))
 
 // 权限按 module 分组展示
 const permGroups = computed(() => {
@@ -128,8 +143,12 @@ function onPageChange(p) {
   load()
 }
 
-function openDialog(row) {
-  Object.assign(form, { id: row?.id || null, name: row?.name || '', phone: row?.phone || '', password: '', roleIds: row?.roleIds ? [...row.roleIds] : [] })
+async function openDialog(row) {
+  await userStore.loadStores()
+  const homeStoreId = row?.storeId || userStore.storeId
+  const storeIds = row?.storeIds ? [...row.storeIds] : [homeStoreId]
+  if (storeIds.some(id => !userStore.stores.some(s => s.id === id))) return ElMessage.warning('该员工的分店范围超出你的权限，请联系总部管理员修改')
+  Object.assign(form, { id: row?.id || null, name: row?.name || '', phone: row?.phone || '', password: '', roleIds: row?.roleIds ? [...row.roleIds] : [], storeIds, homeStoreId })
   dialog.value = true
 }
 
@@ -137,12 +156,14 @@ async function onSave() {
   if (!form.name.trim() || !/^1[3-9]\d{9}$/.test(form.phone)) return ElMessage.warning('请填写姓名和正确的手机号')
   if (!form.id && (form.password.length < 8 || form.password.length > 64)) return ElMessage.warning('密码需为 8–64 位')
   if (!form.roleIds.length) return ElMessage.warning('请至少选择一个角色')
+  if (!form.storeIds.length || !form.storeIds.includes(form.homeStoreId)) return ElMessage.warning('请选择可访问分店，并保留所属分店')
   saving.value = true
   try {
-    if (form.id) await api.staffUpdate(form.id, { name: form.name, phone: form.phone, roleIds: form.roleIds })
+    if (form.id) await api.staffUpdate(form.id, { name: form.name, phone: form.phone, roleIds: form.roleIds, storeIds: form.storeIds })
     else await api.staffCreate({ ...form, storeId: userStore.storeId })
     ElMessage.success(form.id ? '员工资料已更新' : '员工创建成功')
     dialog.value = false
+    await userStore.loadStores()
     load()
   } finally {
     saving.value = false
@@ -183,6 +204,7 @@ onMounted(async () => {
 
 <style scoped>
 .drawer-tip { font-size: 13px; color: #8a9099; line-height: 1.7; margin: 0 0 16px; }
+.scope-tip { font-size: 12px; line-height: 1.7; color: #737b87; margin: 6px 0 0; }
 .perm-group { margin-bottom: 16px; }
 .perm-group .mod { font-size: 13px; font-weight: 600; color: #1f2329; margin-bottom: 8px; }
 .code { color: #a4a9b0; font-size: 11px; margin-left: 4px; }

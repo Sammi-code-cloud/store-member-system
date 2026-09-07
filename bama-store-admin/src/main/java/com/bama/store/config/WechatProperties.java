@@ -9,6 +9,7 @@ import org.springframework.stereotype.Component;
 @ConfigurationProperties(prefix="bama.wechat")
 public class WechatProperties {
     private String miniAppId="", miniSecret="", webAppId="", webSecret="", webRedirectUri="";
+    private String miniCodeEnvironment="release";
     public boolean miniReady() { return !miniAppId.isBlank() && !miniSecret.isBlank(); }
     public boolean webReady() { return !webAppId.isBlank() && !webSecret.isBlank() && webRedirectUri.startsWith("https://"); }
 }

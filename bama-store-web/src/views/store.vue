@@ -1,6 +1,7 @@
 <template>
   <div class="page-card" style="max-width:620px">
     <h3 class="page-title">门店设置 <span class="page-sub">门店信息将展示在顾客端小程序首页</span></h3>
+    <MiniProgramCode :store-id="storeId" :store-name="form.name" style="margin-bottom:18px" />
 
     <el-form :model="form" label-width="100px" v-loading="loading">
       <el-form-item label="门店名称" required>
@@ -37,6 +38,7 @@ import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import api from '@/api'
 import { useUserStore } from '@/store/user'
+import MiniProgramCode from '@/components/MiniProgramCode.vue'
 
 const userStore = useUserStore()
 const loading = ref(false)

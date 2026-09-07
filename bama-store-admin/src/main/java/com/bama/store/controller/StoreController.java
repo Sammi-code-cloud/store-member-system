@@ -17,12 +17,26 @@ public class StoreController {
 
     private final StoreMapper storeMapper;
     private final com.bama.store.service.AuditService audit;
+    private final com.bama.store.service.WechatClient wechat;
+
+    @GetMapping("/{id}/mini-code")
+    @PreAuthorize("hasAnyAuthority('store:manage','store:all')")
+    public Result<?> miniCode(@PathVariable Long id, jakarta.servlet.http.HttpServletResponse response) {
+        response.setHeader("Cache-Control", "no-store");
+        if (!com.bama.store.security.SecurityUtil.current().getStoreIds().contains(id))
+            throw new com.bama.store.common.BusinessException(com.bama.store.common.ResultCode.FORBIDDEN);
+        Store store = storeMapper.selectById(id);
+        if (store == null || !Integer.valueOf(1).equals(store.getStatus()))
+            throw new com.bama.store.common.BusinessException("该分店暂未营业，无法生成到店小程序码");
+        return Result.success(java.util.Map.of("image", wechat.miniCode(id), "storeName", store.getName()));
+    }
 
     @GetMapping
     public Result<java.util.List<Store>> list() {
         var user = com.bama.store.security.SecurityUtil.current();
         var q = new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<Store>();
-        if (!user.getPermissions().contains("store:all")) q.eq(Store::getId, user.getStoreId());
+        if (user.getStoreIds().isEmpty()) return Result.success(java.util.List.of());
+        q.in(Store::getId, user.getStoreIds());
         return Result.success(storeMapper.selectList(q.orderByAsc(Store::getId)));
     }
 

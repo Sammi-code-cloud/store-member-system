@@ -3,6 +3,7 @@
     <template #header><div class="heading"><div><b>分店管理</b><p>每家分店独立设置包间、员工、营业时间和预约。</p></div><el-button type="primary" @click="open">新增分店</el-button></div></template>
     <el-table :data="user.stores">
       <el-table-column prop="name" label="分店名称" min-width="180" />
+      <el-table-column label="微信到店" width="120"><template #default="{row}"><MiniProgramCode :store-id="row.id" :store-name="row.name" /></template></el-table-column>
       <el-table-column prop="address" label="地址" min-width="220" />
       <el-table-column prop="phone" label="联系电话" width="160" />
       <el-table-column label="营业时间" width="150"><template #default="{row}">{{ row.openTime }}–{{ row.closeTime }}</template></el-table-column>
@@ -29,6 +30,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useUserStore } from '@/store/user'
 import api from '@/api'
+import MiniProgramCode from '@/components/MiniProgramCode.vue'
 const user = useUserStore(), router = useRouter(), visible = ref(false), saving = ref(false), form = ref({})
 function open() { form.value = { name:'', address:'', phone:'', openTime:'10:00', closeTime:'22:00', status:0, reservationNotice:'' }; visible.value=true }
 async function save() {

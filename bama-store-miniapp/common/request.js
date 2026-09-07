@@ -1,15 +1,23 @@
 // 网络请求封装（基于 uni.request）
+import { networkError } from './network-error.mjs'
 
 // 后端地址：本地联调用 localhost；真机 / 微信小程序需换成已备案的 https 域名
-export const BASE_URL = 'http://localhost:8092'
+export const BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8092').replace(/\/$/, '')
 
 export default function request(options) {
   return new Promise((resolve, reject) => {
     const customer = options.url.startsWith('/api/customer/')
-    const token = uni.getStorageSync(customer ? 'customer_token' : 'token')
+    // WeChat exchanges are anonymous: never attach an unrelated/stale staff session.
+    const anonymous = options.url.startsWith('/api/wechat/') || options.url === '/api/auth/login' || options.url === '/api/customer/stores'
+    const token = anonymous ? '' : uni.getStorageSync(customer ? 'customer_token' : 'token')
+    if (typeof window === 'undefined' && !BASE_URL.startsWith('https://')) {
+      reject(new Error('小程序服务地址尚未配置，请联系门店管理员配置 HTTPS 服务地址'))
+      return
+    }
     uni.request({
       url: BASE_URL + options.url,
       method: options.method || 'GET',
+      timeout: 15000,
       data: options.data || {},
       header: {
         'Content-Type': 'application/json',
@@ -35,8 +43,12 @@ export default function request(options) {
         reject(body || res)
       },
       fail: (err) => {
-        uni.showToast({ title: '网络异常，请检查后端服务', icon: 'none' })
-        reject(err)
+        const error = networkError(err)
+        // Keep the native reason for debugging; never log credentials, bodies or query strings.
+        error.errMsg = err.errMsg
+        console.warn('[门店请求失败]', options.url.split('?')[0], String(err.errMsg || '').replace(/https?:\/\/\S+/g, '[服务地址]'))
+        uni.showToast({ title: error.message, icon: 'none', duration: 4000 })
+        reject(error)
       }
     })
   })

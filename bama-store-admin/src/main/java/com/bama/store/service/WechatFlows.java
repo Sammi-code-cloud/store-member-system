@@ -23,6 +23,13 @@ public class WechatFlows {
   return token;
  }
  @Transactional
+ public Map<String,String> peek(String token,String kind) {
+  if(token==null || token.length()!=43)throw new BusinessException("微信登录请求已过期，请重新发起");
+  var rows=jdbc.queryForList("SELECT payload FROM t_wechat_flow WHERE token_hash=? AND kind=? AND expires_at>?",hash(token),kind,Timestamp.from(Instant.now()));
+  if(rows.size()!=1)throw new BusinessException("微信登录请求已过期或已使用，请重新发起");
+  try{return json.readValue(rows.get(0).get("payload").toString(),new com.fasterxml.jackson.core.type.TypeReference<Map<String,String>>(){});}catch(Exception e){throw new IllegalStateException(e);}
+ }
+ @Transactional
  public Map<String,String> consume(String token,String kind) {
   if(token==null || token.length()!=43)throw new BusinessException("微信登录请求已过期，请重新发起");
   var rows=jdbc.queryForList("SELECT payload FROM t_wechat_flow WHERE token_hash=? AND kind=? AND expires_at>? FOR UPDATE",hash(token),kind,Timestamp.from(Instant.now()));

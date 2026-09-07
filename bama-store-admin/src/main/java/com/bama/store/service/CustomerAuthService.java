@@ -61,17 +61,26 @@ public class CustomerAuthService {
 
     @Transactional
     public Map<String,Object> wechatLogin(Long id) {
-        if(id==null) {
+        if(id==null) throw new BusinessException("请先验证手机号并绑定微信");
+        Member member=requireActive(id);
+        member.setLastLoginTime(LocalDateTime.now(BookingRules.ZONE)); members.updateById(member);return response(member);
+    }
+
+    public Member requireActive(Long id) {
+        Member member=members.selectById(id);
+        if(member==null || !Integer.valueOf(1).equals(member.getStatus()))throw new BusinessException("账号已停用，请联系门店");
+        return member;
+    }
+
+    @Transactional
+    public Long createWechatMember(String phone) {
             Member member=new Member(); member.setMemberNo(OrderNoUtil.generate("M")); member.setName("微信顾客");
+            member.setPhone(phone);
             member.setLevel("NORMAL"); member.setDiscount(100); member.setPoints(0); member.setStatus(1);
             member.setLastLoginTime(LocalDateTime.now(BookingRules.ZONE)); members.insert(member);
             MemberAccount account=new MemberAccount(); account.setMemberId(member.getId()); account.setBalance(BigDecimal.ZERO);
             account.setTotalRecharge(BigDecimal.ZERO); account.setTotalConsume(BigDecimal.ZERO); account.setVersion(0); accounts.insert(account);
-            return response(member);
-        }
-        Member member=members.selectById(id);
-        if(member==null || !Integer.valueOf(1).equals(member.getStatus()))throw new BusinessException("账号已停用，请联系门店");
-        member.setLastLoginTime(LocalDateTime.now(BookingRules.ZONE)); members.updateById(member);return response(member);
+            return member.getId();
     }
 
     private Map<String, Object> response(Member member) {

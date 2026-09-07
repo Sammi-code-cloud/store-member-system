@@ -39,6 +39,7 @@ import api from '@/common/api.js'
 import CustomerNav from '@/components/CustomerNav.vue'
 import { BASE_URL } from '@/common/request.js'
 import { wechatLogin } from '@/common/wechat.js'
+import { completeCustomerWechat } from '@/common/customer-wechat.js'
 // Only remind once during this app launch, including when returning from login.
 let welcomeShown = false
 export default {
@@ -100,9 +101,8 @@ export default {
       if (this.welcomeLoading) return
       this.welcomeLoading = true
       try {
-        const { account } = await wechatLogin('CUSTOMER')
-        uni.setStorageSync('customer_token', account.token)
-        uni.setStorageSync('customer_user', { memberId: account.memberId, name: account.name })
+        const result = await wechatLogin('CUSTOMER')
+        if (!completeCustomerWechat(result)) { this.showWelcome = false; return }
         this.showWelcome = false
         await this.loadAll()
       } catch (e) {

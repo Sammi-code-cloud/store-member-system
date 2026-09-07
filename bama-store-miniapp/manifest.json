@@ -2,8 +2,8 @@
   "name": "八马门店",
   "appid": "",
   "description": "八马门店系统 · 顾客端 + 员工端",
-  "versionName": "1.0.0",
-  "versionCode": "100",
+  "versionName": "1.0.4",
+  "versionCode": "104",
   "transformPx": false,
   "app-plus": {
     "usingComponents": true,
@@ -22,7 +22,7 @@
   "mp-weixin": {
     "appid": "wxd2edae0de195332a",
     "setting": {
-      "urlCheck": false,
+      "urlCheck": true,
       "es6": true,
       "minified": true
     },

@@ -21,7 +21,8 @@
     <el-container>
       <el-header class="header">
         <div class="crumb">{{ route.meta.title || '' }}</div>
-        <el-select :model-value="userStore.storeId" @change="switchStore" :disabled="!userStore.has('store:all')" style="width:260px" aria-label="当前分店">
+        <div class="header-actions">
+        <el-select :model-value="userStore.storeId" @change="switchStore" :disabled="userStore.stores.length < 2" class="store-switch" aria-label="当前分店">
           <el-option v-for="s in userStore.stores" :key="s.id" :value="s.id" :label="s.name + (s.status === 0 ? '（暂停营业）' : '')" />
         </el-select>
         <el-dropdown @command="onCommand">
@@ -37,6 +38,7 @@
             </el-dropdown-menu>
           </template>
         </el-dropdown>
+        </div>
       </el-header>
 
       <el-main class="main">
@@ -58,10 +60,14 @@ const userStore = useUserStore()
 const ready = ref(false)
 onMounted(async () => { await userStore.loadStores(); ready.value = true })
 async function switchStore(id) {
+  if (id === userStore.storeId) return
+  await userStore.loadStores()
+  if (!userStore.stores.some(s => s.id === id)) return
   ready.value = false
-  await router.replace({path: route.path, query: {}})
-  userStore.selectStore(id)
-  ready.value = true
+  try {
+    userStore.selectStore(id)
+    await router.replace({path: route.path, query: {}})
+  } finally { ready.value = true }
 }
 
 // 取出主布局下的子路由，按 group 分组，并按权限码过滤
@@ -96,6 +102,9 @@ function onCommand(cmd) {
 .header { background: #fff; display: flex; align-items: center; justify-content: space-between;
   border-bottom: 1px solid #e8eaed; height: 56px; }
 .crumb { font-size: 15px; font-weight: 600; color: #1f2329; }
+.header-actions { margin-left: auto; display: flex; align-items: center; gap: 16px; }
+.store-switch { width: 240px; }
+@media (max-width: 900px) { .store-switch { width: 180px; } .header-actions { gap: 10px; } }
 .user { display: flex; align-items: center; gap: 6px; cursor: pointer; color: #4a5057; font-size: 14px; }
 .main { padding: 16px; overflow-y: auto; }
 </style>

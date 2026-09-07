@@ -22,6 +22,7 @@ public class StaffCreateRequest {
     private String password;
 
     private Long storeId;
+    private List<Long> storeIds;
 
     /** 角色ID列表 */
     @NotEmpty(message = "至少分配一个角色")

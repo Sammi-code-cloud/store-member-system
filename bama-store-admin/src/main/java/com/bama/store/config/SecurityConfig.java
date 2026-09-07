@@ -47,6 +47,7 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/api/wechat/customer/sms", "/api/wechat/customer/bind").permitAll()
                         // 登录、顾客端公开接口、错误页放行
                         .requestMatchers("/api/auth/login", "/api/customer/auth/register", "/api/customer/auth/login", "/api/wechat/config", "/api/wechat/mini", "/api/wechat/start", "/api/wechat/exchange", "/api/wechat/bind", "/error").permitAll()
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/customer/rooms", "/api/customer/rooms/*/slots", "/api/customer/rooms/*/reserved", "/api/customer/store", "/api/customer/stores", "/api/customer/products").permitAll()

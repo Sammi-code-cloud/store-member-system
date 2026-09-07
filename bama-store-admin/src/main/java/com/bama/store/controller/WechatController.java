@@ -14,6 +14,15 @@ public class WechatController {
  public record MiniRequest(String code,String audience) {}
  public record ExchangeRequest(String code,String state) {}
  public record BindRequest(String ticket,String phone,String password) {}
+ private final CustomerWechatBinding customerBinding;
+ public record SmsRequest(String ticket,String phone) {}
+ public record CustomerBindRequest(String ticket,String phone,String challenge,String code) {}
+ @PostMapping("/customer/sms") public Result<?> sms(@RequestBody SmsRequest body,HttpServletRequest request) {
+  return Result.success(customerBinding.send(body.ticket(),body.phone(),request.getRemoteAddr()));
+ }
+ @PostMapping("/customer/bind") public Result<?> customerBind(@RequestBody CustomerBindRequest body) {
+  return Result.success(customerBinding.bind(body.ticket(),body.phone(),body.challenge(),body.code()));
+ }
  @ModelAttribute public void noCache(HttpServletResponse response){response.setHeader("Cache-Control","no-store");}
  private String audience(String value){if(!"STAFF".equals(value)&&!"CUSTOMER".equals(value))throw new BusinessException("登录端类型无效");return value;}
  @GetMapping("/config") public Result<?> config(){return Result.success(Map.of("miniEnabled",config.miniReady(),"webEnabled",config.webReady(),"message","微信应用尚未开通或配置，请使用账号密码登录"));}

@@ -22,4 +22,6 @@ public class LoginStaff implements Serializable {
     private Long storeId;
     /** 权限编码集合 */
     private Set<String> permissions;
+    /** Accessible stores, loaded afresh on every authenticated request. */
+    private Set<Long> storeIds;
 }

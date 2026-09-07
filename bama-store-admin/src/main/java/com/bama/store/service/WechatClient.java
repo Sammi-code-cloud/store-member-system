@@ -18,6 +18,44 @@ public class WechatClient {
  private final HttpClient http=HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build();
  public record Identity(String appId,String openId,String unionId) {}
  public static String enc(String text) { return URLEncoder.encode(text,StandardCharsets.UTF_8); }
+ private String miniAccessToken="";
+ private long miniTokenExpiresAt;
+ private synchronized String miniToken() throws Exception {
+  if(System.currentTimeMillis()<miniTokenExpiresAt)return miniAccessToken;
+  var payload=java.util.Map.of("grant_type","client_credential","appid",config.getMiniAppId(),"secret",config.getMiniSecret());
+  var response=http.send(HttpRequest.newBuilder(URI.create("https://api.weixin.qq.com/cgi-bin/stable_token"))
+    .timeout(Duration.ofSeconds(8)).header("Content-Type","application/json")
+    .POST(HttpRequest.BodyPublishers.ofString(json.writeValueAsString(payload))).build(),HttpResponse.BodyHandlers.ofString());
+  var body=json.readTree(response.body());
+  if(response.statusCode()!=200 || body.path("access_token").asText().isBlank())throw new BusinessException("无法获取小程序凭证，请检查微信应用配置及服务器 IP 白名单");
+  miniAccessToken=body.path("access_token").asText();
+  miniTokenExpiresAt=System.currentTimeMillis()+Math.max(0,body.path("expires_in").asLong()-120)*1000;
+  return miniAccessToken;
+ }
+ /** The code carries a public store ID only, never a login token or a credential. */
+ public String miniCode(Long storeId) {
+  if(!config.miniReady())throw new BusinessException("微信小程序尚未配置，无法生成小程序码");
+  if(storeId==null || storeId<=0)throw new BusinessException("分店编号无效");
+  String env=config.getMiniCodeEnvironment();
+  if(!java.util.Set.of("release","trial","develop").contains(env))throw new BusinessException("小程序码版本配置无效");
+  try {
+   var payload=java.util.Map.of("scene","s="+storeId,"page","pages/customer/entry","env_version",env,"check_path",true,"width",430);
+   var response=http.send(HttpRequest.newBuilder(URI.create("https://api.weixin.qq.com/wxa/getwxacodeunlimit?access_token="+enc(miniToken())))
+     .timeout(Duration.ofSeconds(8)).header("Content-Type","application/json")
+     .POST(HttpRequest.BodyPublishers.ofString(json.writeValueAsString(payload))).build(),HttpResponse.BodyHandlers.ofByteArray());
+   byte[] bytes=response.body();
+   if(response.statusCode()!=200 || bytes.length>1024*1024)throw new BusinessException("小程序码生成失败，请稍后重试");
+   if(response.headers().firstValue("Content-Type").orElse("").contains("json")) {
+    int error=json.readTree(bytes).path("errcode").asInt();
+    if(error==40001 || error==40014 || error==42001) { synchronized(this){miniTokenExpiresAt=0;} }
+    throw new BusinessException(error==41030 ? "扫码入口页面尚未发布，请先上传包含扫码入口的小程序版本" : "小程序码生成失败，请检查发布版本和微信应用配置后重试");
+   }
+   boolean png=bytes.length>8 && bytes[0]==(byte)137 && bytes[1]==80 && bytes[2]==78 && bytes[3]==71;
+   boolean jpeg=bytes.length>3 && bytes[0]==(byte)255 && bytes[1]==(byte)216 && bytes[2]==(byte)255;
+   if(!png&&!jpeg)throw new BusinessException("微信未返回有效的小程序码，请检查小程序发布状态");
+   return "data:image/"+(png?"png":"jpeg")+";base64,"+java.util.Base64.getEncoder().encodeToString(bytes);
+  } catch(BusinessException e){throw e;} catch(Exception e){if(e instanceof InterruptedException)Thread.currentThread().interrupt();throw new BusinessException("微信服务暂不可用，请稍后重试");}
+ }
  public Identity exchange(String channel,String code) {
   boolean mini="MINI".equals(channel);
   if(mini ? !config.miniReady() : !config.webReady()) throw new BusinessException("微信登录尚未配置，请先使用账号密码登录");
