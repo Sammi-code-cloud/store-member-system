@@ -32,6 +32,47 @@ class AdminIntegrationTest {
     }
     private String unique() { return "test_" + UUID.randomUUID().toString().replace("-", "").substring(0, 16); }
 
+    @Test void branchLifecycleRequiresHeadOfficeAndUpdatesPublicVisibility() throws Exception {
+        long id=data(call("POST","/api/store",admin,Map.of("name",unique(),"status",1,"openTime","10:00","closeTime","22:00"))).asLong();
+        String manager=data(call("POST","/api/auth/login",null,Map.of("phone","13800000001","password","123456"))).path("token").asText();
+        assertThat(call("PUT","/api/store/"+id+"/status",manager,Map.of("status",0)).path("code").asInt()).isEqualTo(403);
+        assertThat(call("DELETE","/api/store/"+id,manager,null).path("code").asInt()).isEqualTo(403);
+        assertThat(call("DELETE","/api/store/"+id,null,null).path("code").asInt()).isEqualTo(401);
+        assertThat(call("DELETE","/api/store/"+id,admin,null).path("message").asText()).contains("先停用");
+        assertThat(call("PUT","/api/store/"+id+"/status",admin,Map.of("status",2)).path("code").asInt()).isNotEqualTo(200);
+        data(call("PUT","/api/store/"+id+"/status",admin,Map.of("status",0)));
+        var publicStores=data(call("GET","/api/customer/stores",null,null));
+        assertThat(java.util.stream.StreamSupport.stream(publicStores.spliterator(),false).anyMatch(s->s.path("id").asLong()==id)).isFalse();
+        data(call("PUT","/api/store/"+id+"/status",admin,Map.of("status",1)));
+        assertThat(jdbc.queryForObject("SELECT status FROM t_store WHERE id=?",Integer.class,id)).isEqualTo(1);
+        data(call("PUT","/api/store/"+id+"/status",admin,Map.of("status",0)));
+        data(call("DELETE","/api/store/"+id,admin,null));
+        assertThat(jdbc.queryForObject("SELECT deleted FROM t_store WHERE id=?",Integer.class,id)).isEqualTo(1);
+        assertThat(call("PUT","/api/store/"+id+"/status",admin,Map.of("status",1)).path("code").asInt()).isNotEqualTo(200);
+        assertThat(call("DELETE","/api/store/"+id,admin,null).path("code").asInt()).isNotEqualTo(200);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM t_audit_log WHERE action='删除分店' AND target=?",Integer.class,Long.toString(id))).isEqualTo(1);
+    }
+
+    @Test void pausedBranchesWithReferencesCannotBeDeletedEvenAfterRoomSoftDeletion() throws Exception {
+        long id=data(call("POST","/api/store",admin,Map.of("name",unique(),"status",0,"openTime","10:00","closeTime","22:00"))).asLong();
+        jdbc.update("INSERT INTO t_staff_store(staff_id,store_id) VALUES(1,?)",id);
+        assertThat(call("DELETE","/api/store/"+id,admin,null).path("message").asText()).contains("关联");
+        jdbc.update("DELETE FROM t_staff_store WHERE store_id=?",id);
+        jdbc.update("INSERT INTO t_tea_room(name,store_id,deleted) VALUES(?,?,1)","历史包间",id);
+        var balance=jdbc.queryForObject("SELECT SUM(balance) FROM t_member_account",java.math.BigDecimal.class);
+        assertThat(call("DELETE","/api/store/"+id,admin,null).path("message").asText()).contains("关联");
+        assertThat(jdbc.queryForObject("SELECT deleted FROM t_store WHERE id=?",Integer.class,id)).isZero();
+        assertThat(jdbc.queryForObject("SELECT SUM(balance) FROM t_member_account",java.math.BigDecimal.class)).isEqualByComparingTo(balance);
+    }
+
+    @Test @org.springframework.transaction.annotation.Transactional
+    void lastBranchCannotBeDeleted() throws Exception {
+        jdbc.update("UPDATE t_store SET deleted=1 WHERE id<>1");
+        jdbc.update("UPDATE t_store SET status=0 WHERE id=1");
+        assertThat(call("DELETE","/api/store/1",admin,null).path("message").asText()).contains("最后一家");
+        assertThat(jdbc.queryForObject("SELECT deleted FROM t_store WHERE id=1",Integer.class)).isZero();
+    }
+
     @Test void assignedBranchesLimitReadsWritesAndRevocationAppliesToExistingToken() throws Exception {
         long branch = data(call("POST", "/api/store", admin, Map.of("name", unique(), "status", 1, "openTime", "10:00", "closeTime", "22:00"))).asLong();
         long other = data(call("POST", "/api/store", admin, Map.of("name", unique(), "status", 1, "openTime", "10:00", "closeTime", "22:00"))).asLong();

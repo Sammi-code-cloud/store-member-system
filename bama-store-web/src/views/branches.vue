@@ -8,9 +8,10 @@
       <el-table-column prop="phone" label="联系电话" width="160" />
       <el-table-column label="营业时间" width="150"><template #default="{row}">{{ row.openTime }}–{{ row.closeTime }}</template></el-table-column>
       <el-table-column label="状态" width="120"><template #default="{row}"><el-tag :type="row.status ? 'success' : 'info'">{{ row.status ? '营业中' : '暂停营业' }}</el-tag></template></el-table-column>
-      <el-table-column label="操作" width="210"><template #default="{row}"><el-button link type="primary" @click="enter(row, '/room')">管理包间</el-button><el-button link @click="enter(row, '/store')">门店设置</el-button></template></el-table-column>
+      <el-table-column label="操作" width="340" fixed="right"><template #default="{row}"><el-button link type="primary" :disabled="busyId !== null" @click="enter(row, '/room')">管理包间</el-button><el-button link :disabled="busyId !== null" @click="enter(row, '/store')">门店设置</el-button><el-button v-if="user.has('store:all')" link :type="row.status === 1 ? 'warning' : 'success'" :disabled="busyId !== null" @click="setStatus(row)">{{ row.status === 1 ? '停用' : '启用' }}</el-button><el-tooltip v-if="user.has('store:all')" :disabled="row.status === 0" content="请先停用门店再删除"><span><el-button link type="danger" :disabled="row.status !== 0 || busyId !== null" @click="remove(row)">删除</el-button></span></el-tooltip></template></el-table-column>
     </el-table>
     <el-alert title="新增分店后，请先配置该店包间与员工；顾客账号和会员余额跨分店共享。" type="info" :closable="false" style="margin-top:20px" />
+    <el-alert title="停用后顾客端不再展示该店，已有记录可继续查询。删除仅适用于没有关联员工、包间、商品及业务记录的停用门店。" type="info" :closable="false" style="margin-top:12px" />
   </el-card>
   <el-dialog v-model="visible" title="新增分店" width="540px" :close-on-click-modal="false">
     <el-form label-width="100px" @submit.prevent="save">
@@ -27,11 +28,12 @@
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { useUserStore } from '@/store/user'
 import api from '@/api'
 import MiniProgramCode from '@/components/MiniProgramCode.vue'
 const user = useUserStore(), router = useRouter(), visible = ref(false), saving = ref(false), form = ref({})
+const busyId = ref(null)
 function open() { form.value = { name:'', address:'', phone:'', openTime:'10:00', closeTime:'22:00', status:0, reservationNotice:'' }; visible.value=true }
 async function save() {
   if (!form.value.name.trim()) return ElMessage.warning('请填写分店名称')
@@ -39,6 +41,24 @@ async function save() {
   saving.value=true
   try { await api.storeCreate(form.value); await user.loadStores(); visible.value=false; ElMessage.success('分店已创建，可配置包间和员工') } finally { saving.value=false }
 }
-async function enter(row, path) { await router.push({path, query:{}}); user.selectStore(row.id) }
+async function enter(row, path) { user.selectStore(row.id); await router.push({path, query:{}}) }
+async function setStatus(row) {
+  if (busyId.value !== null) return
+  const status = row.status === 1 ? 0 : 1, action = status === 1 ? '启用' : '停用'
+  try { await ElMessageBox.confirm(status === 0 ? `停用“${row.name}”后，顾客端不再展示该店，也不能新建预约；已有预约和账目保留。` : `确认恢复“${row.name}”营业？`, `${action}门店`, { type:'warning', confirmButtonText:`确认${action}`, cancelButtonText:'取消' }) } catch { return }
+  busyId.value = row.id
+  try { await api.storeStatus(row.id, status); await user.loadStores(); ElMessage.success(`门店已${action}`) } finally { busyId.value = null }
+}
+async function remove(row) {
+  if (busyId.value !== null || row.status !== 0) return
+  try { await ElMessageBox.confirm(`确认删除已停用的“${row.name}”？存在关联数据的门店无法删除。`, '删除门店', { type:'warning', confirmButtonText:'确认删除', cancelButtonText:'取消' }) } catch { return }
+  busyId.value = row.id
+  try {
+    await api.storeDelete(row.id)
+    if (user.storeId === row.id) user.selectStore(null)
+    await user.loadStores()
+    ElMessage.success('门店已删除')
+  } finally { busyId.value = null }
+}
 </script>
 <style scoped>.heading{display:flex;align-items:center;justify-content:space-between}.heading p{font-size:13px;color:#7a8089;margin-bottom:0}</style>

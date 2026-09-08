@@ -64,6 +64,8 @@ export const api = {
   storeList: () => request.get('/store'),
   storeMiniCode: id => request.get(`/store/${id}/mini-code`),
   storeCreate: data => request.post('/store', data),
+  storeStatus: (id, status) => request.put(`/store/${id}/status`, { status }),
+  storeDelete: id => request.delete(`/store/${id}`),
   storeDetail: id => request.get(`/store/${id}`),
   storeUpdate: (id, data) => request.put(`/store/${id}`, data)
 }
