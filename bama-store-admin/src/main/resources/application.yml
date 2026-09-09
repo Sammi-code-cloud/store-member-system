@@ -10,7 +10,7 @@ spring:
     # 本地开发：复制 application-local.yml.example 为 application-local.yml 并填真实值，
     #          启动时加 --spring.profiles.active=local
     # createDatabaseIfNotExist 自动创建目标库
-    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:ysm}?createDatabaseIfNotExist=true&useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:bama}?createDatabaseIfNotExist=true&useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
     username: ${DB_USER:root}
     password: ${DB_PASSWORD:}
   # 首次启动自动执行建表与初始化数据脚本（脚本均为幂等，可重复执行）
