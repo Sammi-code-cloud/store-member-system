@@ -17,6 +17,10 @@ public class WalletTxn extends BaseEntity {
     private String memberName;
     @com.baomidou.mybatisplus.annotation.TableField(exist = false)
     private String staffName;
+    @com.baomidou.mybatisplus.annotation.TableField(exist = false)
+    private String memberPhone;
+    @com.baomidou.mybatisplus.annotation.TableField(exist = false)
+    private String storeName;
 
     private Long memberId;
     /** 业务幂等号 */

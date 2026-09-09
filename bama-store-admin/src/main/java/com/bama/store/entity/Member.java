@@ -29,6 +29,8 @@ public class Member extends BaseEntity {
     private String level;
     /** 折扣百分比，92 表示 92 折 */
     private Integer discount;
+    /** 历史兼容字段，不再对外提供积分功能。 */
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private Integer points;
     /** 1正常 0冻结 */
     private Integer status;

@@ -11,6 +11,11 @@
     </view>
 
     <view class="manual card">
+      <text class="label">按手机号收款</text>
+      <input v-model="phone" class="input" type="number" maxlength="11" :disabled="loading" placeholder="输入会员的11位手机号" @confirm="findPhone" />
+      <button class="btn-primary submit" :disabled="loading" :loading="loading" @tap="findPhone">查询会员并收款</button>
+    </view>
+    <view class="manual card">
       <text class="label">或手动输入付款码</text>
       <input v-model="payCode" class="input" placeholder="粘贴 / 输入会员付款码" />
       <view class="btn-primary submit" @tap="resolve">识别会员</view>
@@ -24,10 +29,22 @@ import api from '@/common/api.js'
 
 export default {
   data() {
-    return { payCode: '' }
+    return { payCode: '', phone: '', loading: false }
   },
   methods: {
+    async findPhone() {
+      if(this.loading)return
+      const phone=String(this.phone || '').trim()
+      if(!/^1[3-9]\d{9}$/.test(phone)){uni.showToast({title:'请输入正确的11位手机号',icon:'none'});return}
+      this.loading=true
+      try {
+        const member=await api.chargeMemberByPhone(phone)
+        uni.setStorageSync('chargeMember',{...member,lookupPhone:phone})
+        uni.navigateTo({url:'/pages/staff/charge'})
+      } catch(e) { /* 请求层提示错误 */ } finally {this.loading=false}
+    },
     scanQr() {
+      if(this.loading)return
       // 微信小程序 / App 支持扫码；H5 不支持时提示手动输入
       // #ifdef MP-WEIXIN || APP-PLUS
       uni.scanCode({
@@ -43,10 +60,12 @@ export default {
       // #endif
     },
     async resolve() {
+      if(this.loading)return
       if (!this.payCode) {
         uni.showToast({ title: '请输入付款码', icon: 'none' })
         return
       }
+      this.loading=true
       try {
         const vo = await api.chargeResolve(this.payCode.trim())
         // 暂存会员信息，进入收款确认页
@@ -54,7 +73,7 @@ export default {
         uni.navigateTo({ url: '/pages/staff/charge' })
       } catch (e) {
         // 错误已统一提示
-      }
+      } finally {this.loading=false}
     }
   }
 }

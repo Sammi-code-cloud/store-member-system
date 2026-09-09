@@ -13,6 +13,10 @@
       </view>
       <view v-if="!banners.length" class="hero" @tap="go('/pages/customer/rooms')"><view class="hero-copy"><text class="hero-kicker">留一段时间，给自己</text><text class="hero-title"><text>好茶相伴</text><text>自在小坐</text></text><text class="hero-sub">寻一处静室，与知己共饮</text><view class="hero-action">预订茶室 <text>↗</text></view></view><view class="tea-art"><view class="halo"/><view class="tea-leaf leaf-one"/><view class="tea-leaf leaf-two"/><view class="saucer"/><view class="cup"><view class="tea"/></view><text class="art-note">闲 · 适</text></view></view>
       <view class="member-panel"><view class="member-top"><text>{{ loggedIn ? '我的会员账户' : '与好茶，初次相逢' }}</text><text class="member-level">{{ loggedIn ? member.levelText : '欢迎加入' }}</text></view><view class="member-bottom"><view v-if="loggedIn"><text class="balance-value">¥ {{ fmt(member.balance) }}</text><text class="balance-note">可用余额 · 各分店共享</text></view><view v-else @tap="go('/pages/customer/login')"><text class="login-label">登录 / 注册 ›</text><text class="balance-note">预订茶室，查看专属账户</text></view><view class="pay-entry" @tap="go(loggedIn ? '/pages/customer/paycode' : '/pages/customer/login')">付款凭证 ›</view></view></view>
+      <view v-if="staffEntry" class="member-panel staff-panel" @tap="openStaff">
+        <view class="member-top"><text>员工工作台</text><text class="member-level">门店员工</text></view>
+        <view class="member-bottom"><view class="staff-summary"><text class="staff-name">{{ staffEntry.name || '员工' }}</text><text class="balance-note">查看门店数据 · 处理日常事务</text></view><view class="pay-entry">{{ staffOpening ? '正在进入…' : '进入工作台 ›' }}</view></view>
+      </view>
       <view class="section-head"><view><text class="section-title">店内好茶</text><text class="section-note">慢慢选，细细品</text></view><text class="section-side">到店选购</text></view>
       <view v-if="!products.length" class="empty-state"><text class="empty-symbol">茶</text><text>好茶正在准备中</text><text class="empty-note">也可以先选一间喜欢的茶室</text></view>
       <view class="product-grid"><view v-for="(p,i) in products" :key="p.id" class="product-card"><view class="product-art" :class="'tone-'+i%3"><image v-if="p.image && !failedImages[p.id]" :src="p.image" mode="aspectFill" class="product-photo" @error="failedImages[p.id] = true"/><view v-else class="tea-tin"><text>八马</text><text class="tin-name">{{(p.category || '茗茶').slice(0,4)}}</text></view><text class="product-badge">店内精选</text></view><view class="product-info"><text class="product-name">{{p.name}}</text><text class="product-spec">{{p.spec || '到店品鉴'}}</text><view class="product-prices"><text class="product-price">¥{{Number(p.memberPrice).toFixed(0)}}</text><text class="retail">¥{{Number(p.retailPrice).toFixed(0)}}</text></view></view></view></view>
@@ -24,9 +28,8 @@
         <text class="welcome-kicker">八马茶业 · 欢迎到店</text>
         <text class="welcome-title">好茶相逢，从这里开始</text>
         <text class="welcome-description">登录后，即可预订茶室、查看订单，以及各分店共享的会员账户</text>
-        <view class="welcome-info"><text class="welcome-info-title">登录信息使用说明</text><text>我们将使用微信身份信息识别你的账户，首次登录会自动建立顾客档案。</text></view>
-        <button class="welcome-primary" :loading="welcomeLoading" :disabled="welcomeLoading" @tap="welcomeWechat">微信一键登录 / 注册</button>
-        <view class="welcome-links"><button :disabled="welcomeLoading" @tap="welcomeAccount(false)">账号登录</button><text>·</text><button :disabled="welcomeLoading" @tap="welcomeAccount(true)">注册新账号</button></view>
+        <view class="welcome-info"><text class="welcome-info-title">登录信息使用说明</text><text>我们将使用微信身份识别账户。已绑定会员可直接登录，首次注册时需填写联系手机号。</text></view>
+        <button class="welcome-primary" :loading="welcomeLoading" :disabled="welcomeLoading" @tap="welcomeWechat">微信登录</button>
         <button class="welcome-skip" :disabled="welcomeLoading" @tap="showWelcome=false">先逛逛</button>
       </view>
     </view>
@@ -34,11 +37,12 @@
 </template>
 
 <script>
-import { auth } from '@/common/store.js'
+import { auth, loadStaffEntry } from '@/common/store.js'
+
 import api from '@/common/api.js'
 import CustomerNav from '@/components/CustomerNav.vue'
 import { BASE_URL } from '@/common/request.js'
-import { wechatLogin } from '@/common/wechat.js'
+import { wechatLogin, resolveWechatStaff } from '@/common/wechat.js'
 import { completeCustomerWechat } from '@/common/customer-wechat.js'
 // Only remind once during this app launch, including when returning from login.
 let welcomeShown = false
@@ -48,10 +52,11 @@ export default {
     return {
       statusBarHeight: 20,
       loggedIn: false,
+      staffEntry: null, staffRequest: 0, staffOpening: false,
       banners: [], bannerIndex: 0, bannerTimer: null, bannerActive: false, bannerTouchX: 0, bannerTouchY: 0, bannerSkipTapUntil: 0, bannerRequest: 0,
       showWelcome: false, welcomeLoading: false,
       member: { balance: 0, levelText: '会员', discount: 100 },
-      stores: [], storeIndex: 0,
+      stores: [], storeIndex: 0, storesRequest: 0,
       failedImages: {}, products: [],
       reservations: [],
       rooms: [],
@@ -72,7 +77,7 @@ export default {
     this.statusBarHeight = uni.getSystemInfoSync().statusBarHeight || 20
   },
   onShow() {
-    if(auth.preferStaff()){uni.reLaunch({url:'/pages/staff/workbench'});return}
+    this.refreshStaffEntry()
     this.bannerActive = true
     if (!uni.getStorageSync('customer_token') && !welcomeShown) {
       welcomeShown = true
@@ -81,9 +86,26 @@ export default {
     if (uni.getStorageSync('customer_token')) this.showWelcome = false
     this.loadAll()
   },
-  onHide() { this.stopBanners() },
-  onUnload() { this.stopBanners() },
+  onHide() { this.staffRequest++; this.staffEntry=null; this.stopBanners() },
+  onUnload() { this.staffRequest++; this.stopBanners() },
   methods: {
+    async refreshStaffEntry() {
+      const request = ++this.staffRequest
+      this.staffEntry = null
+      const staff = await loadStaffEntry(auth, api.staffSession, resolveWechatStaff, () => request === this.staffRequest)
+      if (request === this.staffRequest) this.staffEntry = staff
+      return request === this.staffRequest ? staff : null
+    },
+    async openStaff() {
+      if (!this.staffEntry || this.staffOpening) return
+      this.staffOpening = true
+      try {
+        const staff = await this.refreshStaffEntry()
+        if (!staff) return
+        auth.setLogin({...staff, token: auth.getToken()})
+        uni.reLaunch({url:'/pages/staff/workbench'})
+      } finally { this.staffOpening = false }
+    },
     bannerSrc(url) { return typeof window === 'undefined' ? BASE_URL + url : url },
     stopBanners() { this.bannerActive=false; this.bannerRequest++; clearInterval(this.bannerTimer) },
     startBannerTimer() { clearInterval(this.bannerTimer); if(this.bannerActive && this.banners.length>1)this.bannerTimer=setInterval(()=>{if(!this.showWelcome)this.bannerIndex=(this.bannerIndex+1)%this.banners.length},5000) },
@@ -114,6 +136,7 @@ export default {
       const id=this.stores[this.storeIndex].id
       uni.setStorageSync('customer_store_id',id)
       this.products=[]
+      this.products=[]
       this.banners=[]; this.bannerIndex=0; clearInterval(this.bannerTimer)
       const request=++this.bannerRequest
       api.customerBanners(id).then(rows=>{
@@ -126,15 +149,23 @@ export default {
     fmt(n) { return Number(n || 0).toFixed(2) },
     go(url) { uni.navigateTo({ url }) },
     async loadAll() {
+      const storeRequest=++this.storesRequest
       this.loggedIn = !!uni.getStorageSync('customer_token')
       if (this.loggedIn) try { this.member = await api.customerHome() } catch (e) { this.loggedIn = false }
       try {
-        this.stores=await api.customerStores()
+        const stores=await api.customerStores()
+        if(storeRequest!==this.storesRequest)return
+        this.stores=stores
         const saved=Number(uni.getStorageSync('customer_store_id'))
         this.storeIndex=Math.max(0,this.stores.findIndex(s=>s.id===saved))
         if(this.stores.length)await this.changeStore({detail:{value:this.storeIndex}})
-        else this.products=[]
-      } catch(e) {}
+        else this.clearStore()
+      } catch(e) { if(storeRequest===this.storesRequest)this.clearStore() }
+    },
+    clearStore() {
+      this.stores=[]; this.storeIndex=0; this.products=[]; this.banners=[]; this.bannerIndex=0
+      this.bannerRequest++; clearInterval(this.bannerTimer)
+      uni.removeStorageSync('customer_store_id')
     }
   }
 }
@@ -179,4 +210,8 @@ export default {
 .banner-dot view{width:10rpx;height:10rpx;border-radius:8rpx;background:#ffffff70;transition:width .25s,background .25s}
 .banner-dot.is-active view{width:26rpx;background:#fff3dc}
 @media(prefers-reduced-motion:reduce){.banner-slide,.banner-dot view{transition:none}}
+</style>
+
+<style scoped>
+.staff-summary{min-width:0;flex:1}.staff-name{display:block;font-size:34rpx;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.staff-panel .pay-entry{flex-shrink:0}
 </style>

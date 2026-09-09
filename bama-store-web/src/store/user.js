@@ -8,6 +8,7 @@ import api from '@/api'
 export const useUserStore = defineStore('user', {
   state: () => ({
     stores: [],
+    storesLoaded: false,
     activeStoreId: Number(localStorage.getItem('bm_active_store')) || null,
     token: localStorage.getItem('bm_token') || '',
     user: JSON.parse(localStorage.getItem('bm_user') || 'null')
@@ -16,11 +17,12 @@ export const useUserStore = defineStore('user', {
     isLogin: state => !!state.token,
     permissions: state => state.user?.permissions || [],
     name: state => state.user?.name || '',
-    storeId: state => state.activeStoreId || state.user?.storeId || 1
+    storeId: state => state.activeStoreId || (state.storesLoaded ? null : state.user?.storeId || null)
   },
   actions: {
     async loadStores() {
-      this.stores = await api.storeList()
+      this.stores = (await api.storeList()).filter(s => s.status === 1 && !s.deleted)
+      this.storesLoaded = true
       const valid = this.stores.some(s => s.id === this.activeStoreId)
       const fallback = this.stores.find(s => s.id === this.user?.storeId) || this.stores[0]
       this.selectStore(valid ? this.activeStoreId : fallback?.id)
@@ -40,6 +42,8 @@ export const useUserStore = defineStore('user', {
       return data
     },
     acceptLogin(data) {
+      this.stores = []
+      this.storesLoaded = false
       this.token = data.token
       this.user = data
       this.selectStore(data.storeId)
@@ -50,6 +54,7 @@ export const useUserStore = defineStore('user', {
     logout() {
       this.activeStoreId = null
       this.stores = []
+      this.storesLoaded = false
       localStorage.removeItem('bm_active_store')
       this.token = ''
       this.user = null

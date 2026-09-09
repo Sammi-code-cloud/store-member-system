@@ -15,6 +15,8 @@ import java.time.Duration;
 public class WechatClient {
  private final WechatProperties config;
  private final ObjectMapper json;
+ @org.springframework.beans.factory.annotation.Value("${bama.wechat.staff-code-environment:release}")
+ private String staffCodeEnvironment="release";
  private final HttpClient http=HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build();
  public record Identity(String appId,String openId,String unionId) {}
  public static String enc(String text) { return URLEncoder.encode(text,StandardCharsets.UTF_8); }
@@ -34,12 +36,23 @@ public class WechatClient {
  }
  /** The code carries a public store ID only, never a login token or a credential. */
  public String miniCode(Long storeId) {
-  if(!config.miniReady())throw new BusinessException("微信小程序尚未配置，无法生成小程序码");
   if(storeId==null || storeId<=0)throw new BusinessException("分店编号无效");
-  String env=config.getMiniCodeEnvironment();
+  return miniCode("s="+storeId,"pages/customer/entry",config.getMiniCodeEnvironment());
+ }
+ public String staffBindCode(String ticket) {
+  if(ticket==null || !ticket.matches("[A-Za-z0-9_-]{22}"))throw new BusinessException("员工绑定码无效");
+  return miniCode("b="+ticket,"pages/staff/login",staffCodeEnvironment);
+ }
+ public String memberBindCode(String ticket) {
+  if(ticket==null || !ticket.matches("[A-Za-z0-9_-]{22}"))throw new BusinessException("会员绑定码无效");
+  return miniCode("m="+ticket,"pages/customer/login",staffCodeEnvironment);
+ }
+ private String miniCode(String scene,String page,String env) {
+  if(!config.miniReady())throw new BusinessException("微信小程序尚未配置，无法生成小程序码");
   if(!java.util.Set.of("release","trial","develop").contains(env))throw new BusinessException("小程序码版本配置无效");
   try {
-   var payload=java.util.Map.of("scene","s="+storeId,"page","pages/customer/entry","env_version",env,"check_path",true,"width",430);
+   // WeChat's published-page check does not apply to uploaded trial/development pages.
+   var payload=java.util.Map.of("scene",scene,"page",page,"env_version",env,"check_path","release".equals(env),"width",430);
    var response=http.send(HttpRequest.newBuilder(URI.create("https://api.weixin.qq.com/wxa/getwxacodeunlimit?access_token="+enc(miniToken())))
      .timeout(Duration.ofSeconds(8)).header("Content-Type","application/json")
      .POST(HttpRequest.BodyPublishers.ofString(json.writeValueAsString(payload))).build(),HttpResponse.BodyHandlers.ofByteArray());
@@ -48,7 +61,7 @@ public class WechatClient {
    if(response.headers().firstValue("Content-Type").orElse("").contains("json")) {
     int error=json.readTree(bytes).path("errcode").asInt();
     if(error==40001 || error==40014 || error==42001) { synchronized(this){miniTokenExpiresAt=0;} }
-    throw new BusinessException(error==41030 ? "扫码入口页面尚未发布，请先上传包含扫码入口的小程序版本" : "小程序码生成失败，请检查发布版本和微信应用配置后重试");
+    throw new BusinessException(error==41030 ? ("release".equals(env) ? "正式版缺少扫码入口，请发布包含入口的小程序版本，或由管理员切换体验版测试" : "体验或开发版本缺少扫码入口，请上传正确版本并检查页面路径") : "小程序码生成失败，请检查发布版本和微信应用配置后重试");
    }
    boolean png=bytes.length>8 && bytes[0]==(byte)137 && bytes[1]==80 && bytes[2]==78 && bytes[3]==71;
    boolean jpeg=bytes.length>3 && bytes[0]==(byte)255 && bytes[1]==(byte)216 && bytes[2]==(byte)255;

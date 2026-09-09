@@ -52,6 +52,13 @@ public class AccountController {
         return Result.success(accountService.resolvePayCode(payCode));
     }
 
+    /** 按完整手机号查询可扣款会员，沿用收款权限。 */
+    @GetMapping("/charge/member")
+    @PreAuthorize("hasAuthority('charge:scan')")
+    public Result<MemberChargeInfoVo> memberByPhone(@RequestParam String phone) {
+        return Result.success(accountService.resolvePhone(phone));
+    }
+
     /** 确认扣款（扣会员卡余额） */
     @PostMapping("/charge/confirm")
     @PreAuthorize("hasAuthority('charge:scan')")

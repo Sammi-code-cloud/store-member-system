@@ -22,8 +22,8 @@
       <el-header class="header">
         <div class="crumb">{{ route.meta.title || '' }}</div>
         <div class="header-actions">
-        <el-select :model-value="userStore.storeId" @change="switchStore" :disabled="userStore.stores.length < 2" class="store-switch" aria-label="当前分店">
-          <el-option v-for="s in userStore.stores" :key="s.id" :value="s.id" :label="s.name + (s.status === 0 ? '（暂停营业）' : '')" />
+        <el-select :model-value="userStore.storeId" @change="switchStore" :disabled="userStore.stores.length < 2" placeholder="暂无营业分店" class="store-switch" aria-label="当前分店">
+          <el-option v-for="s in userStore.stores" :key="s.id" :value="s.id" :label="s.name" />
         </el-select>
         <el-dropdown @command="onCommand">
           <span class="user">
@@ -42,7 +42,8 @@
       </el-header>
 
       <el-main class="main">
-        <router-view v-if="ready" :key="userStore.storeId" />
+        <router-view v-if="ready && (userStore.storeId || ['/branches', '/member'].includes(route.path))" :key="userStore.storeId" />
+        <el-empty v-else-if="ready" description="暂无可用的营业分店" />
         <el-result v-else title="正在加载分店" />
       </el-main>
     </el-container>

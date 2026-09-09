@@ -22,7 +22,7 @@ public class ReservationService {
     private final TeaRoomMapper rooms;
     private final MemberMapper members;
     private final RoomClosureMapper closures;
-    private final StoreMapper stores;
+    private final StoreAvailability storeAvailability;
     private final TeaRoomService roomService;
     private final AuditService audit;
 
@@ -50,8 +50,8 @@ public class ReservationService {
 
     private void checkAvailability(TeaRoom room, LocalDate date, String time, BigDecimal hours, Long excludedId) {
         BookingRules.validate(room, date, time, hours);
-        Store store = stores.selectById(room.getStoreId());
-        if (store == null || !Integer.valueOf(1).equals(store.getStatus())) throw new BusinessException("门店暂停营业");
+        Store store = org.springframework.transaction.support.TransactionSynchronizationManager.isActualTransactionActive()
+                ? storeAvailability.lockActive(room.getStoreId()) : storeAvailability.requireActive(room.getStoreId());
         int start = BookingRules.minute(time), end = start + BookingRules.duration(hours);
         if (start < BookingRules.minute(store.getOpenTime()) || end > BookingRules.minute(store.getCloseTime())) throw new BusinessException("预约超出门店营业时间");
         var taken = reservations.selectList(new LambdaQueryWrapper<Reservation>().eq(Reservation::getRoomId, room.getId()).eq(Reservation::getReserveDate, date).notIn(Reservation::getStatus, "CANCELLED", "REJECTED").ne(excludedId != null, Reservation::getId, excludedId).last("FOR UPDATE"));

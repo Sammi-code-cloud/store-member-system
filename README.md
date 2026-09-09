@@ -1,11 +1,13 @@
 # 八马门店会员系统（store-member-system）
 
-> 后台首版新增员工编辑、房间时段管理、预约日历、顾客注册自动建档、经营统计、资金流水和操作记录。启动方式、数据迁移及验证范围见 [后台管理端-使用说明](后台管理端-使用说明.md)。下方原有完成状态描述不代表微信登录、真实退款等外部能力已经接入。
+> 后台首版新增员工编辑、房间时段管理、预约日历、顾客注册自动建档、经营统计、资金流水和操作记录。启动方式、数据迁移及验证范围见 [后台管理端-使用说明](docs/guides/后台管理端-使用说明.md)。下方原有完成状态描述不代表微信登录、真实退款等外部能力已经接入。
 
 面向茶叶门店的会员储值与扫码收款系统，覆盖**顾客端**、**员工端**、**管理后台**三端，
 核心能力为：会员储值 → 顾客出示动态付款码 → 员工扫码扣费 → 实时回执。
 
 ---
+
+文档入口：[项目文档索引](docs/README.md)。
 
 ## 一、系统架构
 
@@ -76,6 +78,9 @@ store-member-system/
 │   ├── src/store/                   Pinia 登录态与权限集合
 │   └── src/views/                   9 个业务页面
 ├── bama-store-miniapp/              uni-app 小程序（顾客端 + 员工端）
+├── docs/                           使用、接入、部署与设计文档
+├── assets/branding/                小程序头像
+├── .local/                         私有配置与运维记录（不提交）
 ├── demo-h5/                         纯 HTML 演示页
 │   ├── index.html                   员工端
 │   ├── customer.html                顾客端
@@ -135,11 +140,18 @@ $env:VITE_API_TARGET="http://192.168.1.100:8080"; npm run dev
 
 ```bash
 cd bama-store-miniapp
+node scripts/setup-local.mjs  # 从公开模板生成本地 manifest.json
 npm install
 npm run dev:h5           # H5 预览
 npm run dev:mp-weixin    # 微信小程序，产物在 dist/dev/mp-weixin
 ```
 或用 HBuilderX 直接导入本目录运行（无需 npm，更省事）。
+
+导入或编译前先生成 `manifest.json`，再填写自己的微信 AppID；也可在运行脚本前设置环境变量 `WECHAT_MINI_APP_ID`。真实 `manifest.json` 已忽略，公开配置维护在 `manifest.example.json`，脚本不会覆盖已有配置。接口域名通过 `.env.example` 复制为 `.env.production.local` 后配置。
+
+### 配置与脱敏约定
+
+仓库仅保留配置模板与演示数据。数据库密码、JWT 密钥、微信 AppSecret、服务器连接资料放在被忽略的本地配置、环境变量或 `.local/` 中；不要写入源码和文档。文档中的 `example.com`、`<SERVER_IP>`、`<PROJECT_DIR>` 均为占位符，演示账号不是真实会员资料。生产部署前必须替换演示密码及开发 JWT 密钥。私有运维记录、证书、日志、数据库备份和编译产物不提交。
 
 ## 六、访问地址
 

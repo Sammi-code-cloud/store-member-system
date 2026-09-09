@@ -33,6 +33,7 @@
       </view>
     </view>
 
+    <view v-if="canViewRecords" class="records-entry card" @tap="go('/pages/staff/records')"><view><text class="record-title">充值 / 消费记录</text><text class="pending-note">查询经办会员、金额和余额变动</text></view><text>›</text></view>
     <view class="section" v-if="canManage">
       <view class="row-head flex-between"><text class="h">待确认预约</text><text class="more">{{pendingTotal}} 单</text></view>
       <text class="pending-note">确认后顾客才预约成功；拒绝会释放所选时段。</text>
@@ -82,7 +83,7 @@ export default {
       reservations: [], pending:[],pendingTotal:0,pendingPage:1,processing:false,rejectId:null,rejectReason:''
     }
   },
-  computed: { canManage(){return auth.can('reservation:manage')} },
+  computed: { canManage(){return auth.can('reservation:manage')}, canViewRecords(){return ['charge:scan','account:recharge','account:view'].some(p=>auth.can(p))} },
   onLoad() {
     this.statusBarHeight = uni.getSystemInfoSync().statusBarHeight || 20
     this.staff = auth.getStaff() || {}
@@ -189,3 +190,5 @@ export default {
 <style scoped>.customer-return{background:transparent;color:#917761;text-align:right;font-size:23rpx;margin:12rpx 0;padding:0 32rpx}</style>
 
 <style scoped>.page{padding-bottom:160rpx}</style>
+
+<style scoped>.records-entry{margin:28rpx 32rpx 0;padding:24rpx 28rpx;display:flex;align-items:center;justify-content:space-between;color:#a73129}.record-title{font-size:30rpx;font-weight:600}</style>

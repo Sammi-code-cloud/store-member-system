@@ -9,6 +9,10 @@ export const auth = {
   },
   setLogin(res) {
     uni.setStorageSync('app_identity','staff')
+    this.saveStaffSession(res)
+  },
+  saveStaffSession(res) {
+    if (!res?.token || !res?.staffId) throw new Error('员工登录结果无效，请重试')
     uni.setStorageSync('token', res.token)
     uni.setStorageSync('staff', {
       staffId: res.staffId,
@@ -39,5 +43,30 @@ export const auth = {
     uni.removeStorageSync('token')
     uni.removeStorageSync('staff')
     uni.removeStorageSync('app_identity')
+  }
+}
+
+// Entry visibility comes from a fresh authenticated response, never cached permissions.
+export async function loadStaffEntry(auth, fetchSession, resolveWechatStaff, isCurrent = () => true) {
+  let token = auth.getToken()
+  try {
+    let staff
+    if (token) {
+      try { staff = await fetchSession() } catch {
+        if (auth.getToken()) return null
+        token = ''
+      }
+    }
+    if (!token) {
+      if (!resolveWechatStaff) return null
+      staff = await resolveWechatStaff()
+      if (!isCurrent() || auth.getToken() !== token || !staff?.token || !staff?.staffId) return null
+      auth.saveStaffSession(staff)
+      token = auth.getToken()
+    }
+    if (!isCurrent() || auth.getToken() !== token || !staff?.staffId || !Array.isArray(staff.permissions)) return null
+    return staff.permissions.includes('dashboard:view') ? staff : null
+  } catch {
+    return null
   }
 }

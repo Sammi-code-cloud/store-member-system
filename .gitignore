@@ -64,3 +64,18 @@ Thumbs.db
 config.txt
 # 本地连接凭据、私有运维记录
 bama-store-admin/.local/
+/bama-store-web/dist-member-bind/
+# 私有配置、部署记录和证书（公开配置请使用 example 模板）
+.local/
+*.private.*
+*.pem
+*.key
+*.p12
+*.pfx
+.env.*
+!.env.example
+!**/.env.example
+/bama-store-miniapp/manifest.json
+project.private.config.json
+*.sql.gz
+*.dump

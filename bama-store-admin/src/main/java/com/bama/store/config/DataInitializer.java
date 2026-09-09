@@ -53,6 +53,6 @@ public class DataInitializer implements ApplicationRunner {
         staffMapper.insert(cashier);
         staffRoleMapper.insert(new StaffRole(cashier.getId(), 2L)); // 收银员
 
-        log.info("初始化管理员账号完成：店长 13800000000/admin123，收银员 13800000001/123456");
+        log.info("演示员工初始化完成；正式使用前请修改初始密码。");
     }
 }

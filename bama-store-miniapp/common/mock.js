@@ -9,7 +9,6 @@ export const demoMember = {
   level: '黑金会员',
   discountText: '92 折',
   balance: '2860.00',
-  points: 1880,
   visits: 38
 }
 

@@ -1,7 +1,7 @@
 import {test} from 'node:test'
 import assert from 'node:assert/strict'
 import {readFileSync} from 'node:fs'
-const source=readFileSync(new URL('../common/store.js',import.meta.url),'utf8').replace('export const auth =','const auth =')
+const source=readFileSync(new URL('../common/store.js',import.meta.url),'utf8').replaceAll('export ', '')
 test('staff login is preferred, explicit customer switch persists, logout removes preference',()=>{
  const store=new Map();let route='';const uni={getStorageSync:k=>store.get(k),setStorageSync:(k,v)=>store.set(k,v),removeStorageSync:k=>store.delete(k),reLaunch:({url})=>route=url}
  const auth=new Function('uni',source+';return auth')(uni)

@@ -23,6 +23,8 @@ class WechatIntegrationTest {
  @MockBean SmsSender sms;
  @Autowired CustomerAuthService customers;
  @Autowired SmsChallenges challenges;
+ @Autowired StaffWechatInvitations invitations;
+ @Autowired StaffWechatMembership staffMembership;
  final Map<String,String> received=new HashMap<>();
  static final java.util.concurrent.atomic.AtomicLong phones=new java.util.concurrent.atomic.AtomicLong(13910000000L);
  @org.junit.jupiter.api.BeforeEach void smsSetup() {
@@ -68,6 +70,83 @@ class WechatIntegrationTest {
   String another=mock("another-"+union,union);
   assertThat(data(call("mini",Map.of("audience","CUSTOMER","code",another))).path("account").path("memberId")).isEqualTo(first.path("memberId"));
   assertThat(first.toString()).doesNotContain("openid","session_key","password");
+ }
+ long freshStaff(String phone) {
+  String number="WX"+UUID.randomUUID().toString().replace("-","").substring(0,16);
+  jdbc.update("INSERT INTO t_staff(staff_no,name,phone,password,store_id,status,deleted) SELECT ?,?,?,password,1,1,0 FROM t_staff WHERE phone='13800000001'",number,"扫码员工",phone);
+  return jdbc.queryForObject("SELECT id FROM t_staff WHERE phone=?",Long.class,phone);
+ }
+ @Test void staffMemberBackfillPreservesExistingMemberWalletAndIsIdempotent() {
+  String phone=Long.toString(phones.incrementAndGet());long staffId=freshStaff(phone);
+  Long memberId=customers.createWechatMember(null);
+  String key="APP:"+UUID.randomUUID();
+  jdbc.update("INSERT INTO t_wechat_account(identity_key,audience,account_id) VALUES(?,'STAFF',?)",key,staffId);
+  jdbc.update("INSERT INTO t_wechat_account(identity_key,audience,account_id) VALUES(?,'CUSTOMER',?)",key,memberId);
+  jdbc.update("UPDATE t_member SET level='GOLD',points=88 WHERE id=?",memberId);
+  jdbc.update("UPDATE t_member_account SET balance=268,total_recharge=500,total_consume=232 WHERE member_id=?",memberId);
+  assertThat(staffMembership.synchronize(staffId)).isEqualTo(memberId);
+  assertThat(staffMembership.synchronize(staffId)).isEqualTo(memberId);
+  var member=jdbc.queryForMap("SELECT name,phone,level,points FROM t_member WHERE id=?",memberId);
+  assertThat(member.get("name")).isEqualTo("扫码员工");assertThat(member.get("phone")).isEqualTo(phone);
+  assertThat(member.get("level")).isEqualTo("GOLD");assertThat(((Number)member.get("points")).intValue()).isEqualTo(88);
+  assertThat(jdbc.queryForObject("SELECT balance FROM t_member_account WHERE member_id=?",java.math.BigDecimal.class,memberId)).isEqualByComparingTo("268");
+ }
+ @Test void memberPhoneCollisionRollsBackEmployeeBindingAndInvitationRemainsValid() throws Exception {
+  String phone=Long.toString(phones.incrementAndGet());long staffId=freshStaff(phone);
+  Long existing=customers.createWechatMember(phone);
+  String ticket=invitations.create(staffId),code=mock(UUID.randomUUID().toString(),"");
+  assertThat(call("staff/bind",Map.of("ticket",ticket,"phone",phone,"code",code)).path("code").asInt()).isNotEqualTo(200);
+  assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM t_wechat_account WHERE audience='STAFF' AND account_id=?",Integer.class,staffId)).isZero();
+  assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM t_wechat_flow WHERE token_hash=?",Integer.class,WechatFlows.hash(ticket))).isEqualTo(1);
+  assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM t_wechat_account WHERE audience='CUSTOMER' AND account_id=?",Integer.class,existing)).isZero();
+ }
+ @Test void staffQrBindingChecksPhoneOneTimeTicketAndWechatOwnership() throws Exception {
+  String phone=Long.toString(phones.incrementAndGet());long staffId=freshStaff(phone);
+  String ticket=invitations.create(staffId);
+  String openid=UUID.randomUUID().toString(), code=mock(openid,"");
+  assertThat(call("staff/bind",Map.of("staffId",staffId,"phone",phone,"code",code)).path("code").asInt()).isNotEqualTo(200);
+  assertThat(call("staff/bind",Map.of("ticket",ticket,"phone","13800000000","code",code)).path("code").asInt()).isNotEqualTo(200);
+  verify(client,never()).exchange("MINI",code);
+  var body=Map.of("ticket",ticket,"phone",phone,"code",code);
+  var account=data(call("staff/bind",body)).path("account");
+    assertThat(account.path("staffId").asLong()).isEqualTo(staffId);
+    var member=jdbc.queryForMap("SELECT id,name FROM t_member WHERE phone=? AND deleted=0",phone);
+    assertThat(member.get("name")).isEqualTo("扫码员工");
+    assertThat(jdbc.queryForObject("SELECT balance FROM t_member_account WHERE member_id=?",java.math.BigDecimal.class,member.get("id"))).isEqualByComparingTo("0");
+    assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM t_wechat_account WHERE audience='CUSTOMER' AND account_id=?",Integer.class,member.get("id"))).isPositive();
+  assertThat(call("staff/bind",body).path("code").asInt()).isNotEqualTo(200);
+  assertThat(data(call("mini",Map.of("audience","STAFF","code",code))).path("account").path("staffId").asLong()).isEqualTo(staffId);
+  String otherPhone=Long.toString(phones.incrementAndGet());long other=freshStaff(otherPhone);
+  assertThat(call("staff/bind",Map.of("ticket",invitations.create(other),"phone",otherPhone,"code",code)).path("code").asInt()).isNotEqualTo(200);
+  assertThatThrownBy(()->invitations.create(staffId)).hasMessageContaining("已绑定");
+ }
+ @Test void refreshedAndExpiredInvitationsCannotBind() throws Exception {
+  String phone=Long.toString(phones.incrementAndGet());long id=freshStaff(phone);
+  String old=invitations.create(id), fresh=invitations.create(id);
+  assertThat(call("staff/bind",Map.of("ticket",old,"phone",phone,"code","unused")).path("code").asInt()).isNotEqualTo(200);
+  jdbc.update("UPDATE t_wechat_flow SET expires_at=? WHERE token_hash=?",java.sql.Timestamp.from(java.time.Instant.now().minusSeconds(1)),WechatFlows.hash(fresh));
+  assertThat(call("staff/bind",Map.of("ticket",fresh,"phone",phone,"code","unused")).path("code").asInt()).isNotEqualTo(200);
+  verify(client,never()).exchange("MINI","unused");
+ }
+ @Test void staffQrRequiresManagementPermissionAndActiveEmployee() throws Exception {
+  var login=MockMvcRequestBuilders.post("/api/auth/login").contentType(MediaType.APPLICATION_JSON).content("{\"phone\":\"13800000000\",\"password\":\"admin123\"}");
+  String token=data(json.readTree(mvc.perform(login).andReturn().getResponse().getContentAsByteArray())).path("token").asText();
+  String phone=Long.toString(phones.incrementAndGet());long id=freshStaff(phone);
+  when(client.staffBindCode(anyString())).thenReturn("data:image/png;base64,dGVzdA==");
+  String path="/api/staff/"+id+"/wechat-code";
+  assertThat(json.readTree(mvc.perform(MockMvcRequestBuilders.get(path)).andReturn().getResponse().getContentAsByteArray()).path("code").asInt()).isEqualTo(401);
+  var response=mvc.perform(MockMvcRequestBuilders.get(path).header("Authorization","Bearer "+token)).andReturn().getResponse();
+  assertThat(data(json.readTree(response.getContentAsByteArray())).path("image").asText()).startsWith("data:image/png");
+  assertThat(response.getHeader("Cache-Control")).isEqualTo("no-store");
+  var captured=org.mockito.ArgumentCaptor.forClass(String.class);
+  verify(client,times(1)).staffBindCode(captured.capture());
+  jdbc.update("UPDATE t_staff SET status=0 WHERE id=?",id);
+  try {
+   assertThat(json.readTree(mvc.perform(MockMvcRequestBuilders.get(path).header("Authorization","Bearer "+token)).andReturn().getResponse().getContentAsByteArray()).path("code").asInt()).isNotEqualTo(200);
+   assertThat(call("staff/bind",Map.of("ticket",captured.getValue(),"phone",phone,"code","disabled")).path("code").asInt()).isNotEqualTo(200);
+   verify(client,never()).exchange("MINI","disabled");
+  } finally {jdbc.update("UPDATE t_staff SET status=1 WHERE id=?",id);}
+  verify(client,times(1)).staffBindCode(anyString());
  }
  @Test void staffMustBindExistingCredentialsAndTicketCannotBeReplayed() throws Exception {
   String code=mock(UUID.randomUUID().toString(),"");

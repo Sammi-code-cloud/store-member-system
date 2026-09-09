@@ -1,7 +1,12 @@
 <script>
 import { rememberScan } from './common/scan-entry.mjs'
+import { parseStaffScene } from './common/staff-bind.mjs'
 export default {
-  onShow(options) { rememberScan(options, uni) },
+  onShow(options) {
+    rememberScan(options, uni)
+    if(options?.path==='pages/customer/login' && options.query?.scene)uni.setStorageSync('pending_member_scene',{scene:options.query.scene})
+    if (['pages/staff/login','pages/staff/bind-wechat'].includes(options?.path) && parseStaffScene(options.query?.scene)) uni.setStorageSync('pending_staff_scene', {scene: options.query.scene})
+  },
   onLaunch() {
     console.log('八马门店小程序启动')
   }

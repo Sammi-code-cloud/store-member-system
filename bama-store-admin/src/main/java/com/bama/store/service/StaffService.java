@@ -26,6 +26,15 @@ public class StaffService {
     private final AuditService audit;
     private final StaffStoreService staffStores;
     private final StoreMapper stores;
+    private final WechatClient wechat;
+    private final StaffWechatInvitations invitations;
+
+    @Transactional
+    public Map<String, Object> bindCode(Long id) {
+        Staff staff = require(id);
+        if (!Integer.valueOf(1).equals(staff.getStatus())) throw new BusinessException("员工已停用，无法生成绑定码");
+        return Map.of("image", wechat.staffBindCode(invitations.create(id)), "staffName", staff.getName(), "expiresIn", 600);
+    }
 
     public Page<Staff> page(long pageNum, long pageSize, String keyword) {
         var assigned = staffStores.staffInStore(SecurityUtil.storeId());

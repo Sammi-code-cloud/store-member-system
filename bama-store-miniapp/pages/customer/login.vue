@@ -1,32 +1,40 @@
 <template>
   <view class="login-page">
-    <view class="seal">茶</view><text class="title">{{register?'欢迎成为我们的顾客':'顾客登录'}}</text><text class="intro">{{register?'注册后即可预订茶室、查看个人账户':'使用顾客账号登录，员工请使用下方员工入口'}}</text>
-    <button class="wechat-login" :loading="wechatLoading" :disabled="wechatLoading || loading" @tap="wechat">微信快捷登录</button>
-    <view class="login-divider">或使用账号登录</view>
-    <view class="form-card"><view class="field"><text>登录账号</text><input v-model="form.username" placeholder="4–32位字母、数字或下划线" maxlength="32"/></view><view class="field" v-if="register"><text>你的称呼</text><input v-model="form.name" placeholder="请输入姓名或昵称" maxlength="32"/></view><view class="field"><text>密码</text><input v-model="form.password" password placeholder="8–64位密码" maxlength="64"/></view><view class="field" v-if="register"><text>确认密码</text><input v-model="confirmPassword" password placeholder="再次输入密码" maxlength="64"/></view><button :loading="loading" :disabled="loading" @tap="submit">{{register?'注册并登录':'登录'}}</button><view class="switch" @tap="register=!register;form.password='';confirmPassword=''">{{register?'已有账号？去登录':'还没有账号？立即注册'}}</view></view>
-    <button class="staff-entry" :disabled="loading || wechatLoading" @tap="staffLogin">员工账号登录 ›</button>
+    <view class="seal">馬</view>
+    <text class="title">{{bindingEntry?'绑定会员微信':'微信登录'}}</text>
+    <text class="intro">{{bindingEntry?'填写门店登记的会员手机号，将当前微信绑定到该会员档案。':(phoneRequired?'首次登录请填写手机号，完成会员注册。':'已绑定会员可直接微信登录，无需重复填写手机号。')}}</text>
+    <view class="form-card">
+      <view v-if="bindingEntry || phoneRequired" class="field"><text>手机号</text><input v-model="phone" type="number" maxlength="11" :disabled="loading" placeholder="请手动输入11位手机号" @confirm="submit"/></view>
+      <view v-if="!bindingEntry && phoneRequired" class="field"><text>称呼（选填）</text><input v-model="name" maxlength="32" :disabled="loading" placeholder="首次注册时，填写你的称呼"/></view>
+      <button class="wechat-login" :loading="loading" :disabled="loading" @tap="submit">{{loading?'正在处理…':(bindingEntry?'确认绑定当前微信':(phoneRequired?'注册并进入':'微信一键登录'))}}</button>
+      <text class="note">{{bindingEntry?'请填写门店登记的手机号。':(phoneRequired?'手机号用于会员联系资料，不会自动合并其他会员账户。':'使用已绑定的微信，即可查看原会员账户和消费记录。')}}</text>
+    </view>
+    <button class="staff-entry" :disabled="loading" @tap="staffLogin">员工账号登录 ›</button>
   </view>
 </template>
 <script>
-import api from '@/common/api.js'
-import { auth } from '@/common/store.js'
-import { wechatLogin } from '@/common/wechat.js'
-import { completeCustomerWechat } from '@/common/customer-wechat.js'
+import {auth} from '@/common/store.js'
+import {loginWechatWithPhone,parseMemberScene,bindMemberWechat} from '@/common/wechat.js'
+import {completeCustomerWechat} from '@/common/customer-wechat.js'
 export default {
-  data(){return{register:false,wechatLoading:false,loading:false,confirmPassword:'',form:{username:'',password:'',name:''}}},
-  onLoad(options){this.register=options?.mode==='register'},
+  data(){return{phone:'',name:'',loading:false,phoneRequired:false,bindingEntry:false,memberTicket:null}},
+  onLoad(options){this.phoneRequired=options?.phoneRequired==='1';if(options?.scene)this.acceptScene(options.scene)},
+  onShow(){const pending=uni.getStorageSync('pending_member_scene');if(pending){uni.removeStorageSync('pending_member_scene');this.acceptScene(pending.scene)}},
   methods:{
-    staffLogin(){auth.switchToStaff()},
-    async wechat(){if(this.wechatLoading || this.loading)return;this.wechatLoading=true;try{const result=await wechatLogin('CUSTOMER');if(completeCustomerWechat(result))uni.reLaunch({url:'/pages/customer/home'})}catch(e){uni.showToast({title:e.message||'微信登录失败',icon:'none'})}finally{this.wechatLoading=false}},
+    acceptScene(scene){this.bindingEntry=true;this.memberTicket=parseMemberScene(scene);this.phone='';this.name=''},
+    staffLogin(){if(!this.loading)auth.switchToStaff()},
     async submit(){
-    if(!/^[a-zA-Z0-9_]{4,32}$/.test(this.form.username.trim()))return uni.showToast({title:'账号需为4–32位字母、数字或下划线',icon:'none'})
-    if(this.register&&(!this.form.name.trim()||this.form.password.length<8||this.form.password!==this.confirmPassword))return uni.showToast({title:'请填写称呼和至少8位密码，并确认两次密码一致',icon:'none'})
-    this.loading=true
-    try{const user=await(this.register?api.customerRegister(this.form):api.customerLogin(this.form));auth.setCustomerLogin(user);uni.reLaunch({url:'/pages/customer/home'})}catch{}finally{this.loading=false}
-  }}
+      if(this.loading)return
+      const phone=String(this.phone || '').trim()
+      if((this.bindingEntry || this.phoneRequired) && !/^1[3-9]\d{9}$/.test(phone)){uni.showToast({title:'请输入正确的11位手机号',icon:'none'});return}
+      this.loading=true
+      try{const result=this.bindingEntry?await bindMemberWechat(this.memberTicket,phone):await loginWechatWithPhone(this.phoneRequired?phone:'',this.name);if(result?.manualPhoneRequired){this.phoneRequired=true;return}if(completeCustomerWechat(result))uni.reLaunch({url:'/pages/customer/home'})}
+      catch(e){uni.showToast({title:e.message || '登录失败，请重试',icon:'none'})}
+      finally{this.loading=false}
+    }
+  }
 }
 </script>
-<style scoped>.login-page{padding:80rpx 40rpx;min-height:100vh;background:#f5f2e9}.seal{width:90rpx;height:90rpx;border-radius:24rpx;background:#55483b;color:#fff;display:flex;align-items:center;justify-content:center;font-size:48rpx;font-family:serif;margin-bottom:40rpx}.title{font-size:44rpx;display:block;font-weight:600;color:#423528}.intro{display:block;font-size:25rpx;color:#94877a;margin:20rpx 0 48rpx}.form-card{background:white;border-radius:24rpx;padding:36rpx}.field{margin-bottom:28rpx}.field text{font-size:25rpx;color:#6a5d50}.field input{height:84rpx;border-bottom:1px solid #f1e4d7;font-size:27rpx}.form-card button{background:#8c1f28;color:white;font-size:30rpx;border-radius:14rpx;margin-top:42rpx}.switch{text-align:center;margin-top:32rpx;font-size:25rpx;color:#8c1f28}.login-page{background:#fff7ef;padding-top:80rpx}.seal{background:#c33c2f;border-radius:18rpx;box-shadow:0 12rpx 32rpx #c33c2f15}.title{font-family:serif;letter-spacing:3rpx;line-height:1.5}.intro{color:#807366;line-height:1.8}.form-card{background:#fffdfa;border:1rpx solid #ecdfd2;border-radius:28rpx;padding:38rpx 32rpx}.field input{height:98rpx;background:#fff5eb;border:1rpx solid #f1e4d7;border-radius:12rpx;padding:0 22rpx;margin-top:14rpx;font-size:25rpx}.form-card button{background:#b5362d;line-height:96rpx;border-radius:14rpx}.switch{padding:10rpx;color:#726558}
-.wechat-login{background:#368352;color:#fff;font-size:28rpx;line-height:96rpx;border-radius:16rpx;margin-bottom:20rpx}.login-divider{text-align:center;color:#9b8978;font-size:22rpx;margin:24rpx 0}</style>
-
-<style scoped>.staff-entry{background:transparent;color:#9b6d55;font-size:25rpx;margin-top:28rpx}</style>
+<style scoped>
+.login-page{padding:90rpx 40rpx;min-height:100vh;box-sizing:border-box;background:#fff7ef}.seal{width:90rpx;height:90rpx;border-radius:20rpx;background:#b5362d;color:#fff;display:flex;align-items:center;justify-content:center;font-size:48rpx;font-family:serif;margin-bottom:40rpx}.title{font-size:46rpx;display:block;font-weight:600;color:#423528;letter-spacing:3rpx}.intro{display:block;font-size:26rpx;color:#807366;margin:22rpx 0 40rpx;line-height:1.8}.form-card{background:#fffdfa;border:1rpx solid #ecdfd2;border-radius:28rpx;padding:38rpx 32rpx}.field{margin-bottom:28rpx}.field text{font-size:26rpx;color:#6a5d50}.field input{height:98rpx;background:#fff5eb;border:1rpx solid #f1e4d7;border-radius:14rpx;padding:0 22rpx;margin-top:14rpx;font-size:28rpx}.wechat-login{background:#368352;color:white;font-size:30rpx;line-height:96rpx;border-radius:16rpx;margin-top:38rpx}.wechat-login[disabled]{opacity:.6}.note{display:block;color:#94877a;font-size:23rpx;line-height:1.8;margin-top:24rpx}.staff-entry{background:transparent;color:#9b6d55;font-size:25rpx;margin-top:28rpx}
+</style>

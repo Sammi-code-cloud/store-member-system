@@ -18,6 +18,8 @@ export const api = {
   auditLogs: params => request.get('/audit-logs', { params }),
 
   // ---------- 会员 ----------
+  memberCreate: data => request.post('/members',data),
+  memberWechatCode: id => request.post(`/members/${id}/wechat-code`),
   memberPage: params => request.get('/members', { params }),
   memberDetail: id => request.get(`/members/${id}`),
   memberAccount: id => request.get(`/members/${id}/account`),
@@ -46,6 +48,7 @@ export const api = {
   // ---------- 员工与权限 ----------
   staffPage: params => request.get('/staff', { params }),
   staffCreate: data => request.post('/staff', data),
+  staffWechatCode: id => request.get(`/staff/${id}/wechat-code`),
   staffUpdate: (id, data) => request.put(`/staff/${id}`, data),
   staffStatus: (id, status) => request.put(`/staff/${id}/status`, null, { params: { status } }),
   staffResetPassword: (id, password) => request.put(`/staff/${id}/password`, { password }),

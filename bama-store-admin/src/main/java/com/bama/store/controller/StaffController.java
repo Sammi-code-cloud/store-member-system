@@ -20,6 +20,13 @@ public class StaffController {
 
     private final StaffService staffService;
 
+    @GetMapping("/{id}/wechat-code")
+    @PreAuthorize("hasAuthority('staff:manage')")
+    public Result<?> wechatCode(@PathVariable Long id, jakarta.servlet.http.HttpServletResponse response) {
+        response.setHeader("Cache-Control", "no-store");
+        return Result.success(staffService.bindCode(id));
+    }
+
     @GetMapping
     @PreAuthorize("hasAuthority('staff:view')")
     public Result<PageResult<Staff>> page(@RequestParam(defaultValue = "1") long pageNum,

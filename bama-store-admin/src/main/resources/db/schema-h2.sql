@@ -192,3 +192,11 @@ CREATE TABLE IF NOT EXISTS t_consume_item (
     subtotal  DECIMAL(12,2) NOT NULL DEFAULT 0.00
 );
 CREATE INDEX IF NOT EXISTS idx_item_order ON t_consume_item(order_id);
+
+-- 扣款幂等记录，不随资金流水归档删除
+CREATE TABLE IF NOT EXISTS t_charge_request (
+    biz_no VARCHAR(64) PRIMARY KEY,
+    request_hash VARCHAR(64) NOT NULL,
+    result_json TEXT,
+    create_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);

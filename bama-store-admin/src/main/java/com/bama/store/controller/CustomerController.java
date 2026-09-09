@@ -80,7 +80,6 @@ public class CustomerController {
         vo.put("level", member.getLevel());
         vo.put("levelText", LEVEL_TEXT.getOrDefault(member.getLevel(), "会员"));
         vo.put("discount", member.getDiscount());
-        vo.put("points", member.getPoints());
         vo.put("balance", account == null ? 0 : account.getBalance());
         vo.put("totalRecharge", account == null ? 0 : account.getTotalRecharge());
         vo.put("totalConsume", account == null ? 0 : account.getTotalConsume());

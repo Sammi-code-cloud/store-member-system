@@ -26,6 +26,8 @@ bama-store-miniapp/
 
 ## 三、运行方式
 
+首次运行先执行 `node scripts/setup-local.mjs`，再填写生成的 `manifest.json` 中的微信 AppID。该文件为本地私有配置，不提交；公共配置请修改 `manifest.example.json`。脚本保留已有配置，也支持环境变量 `WECHAT_MINI_APP_ID`。
+
 ### 方式一：HBuilderX（推荐，最简单）
 1. 下载安装 HBuilderX（自带 uni-app 编译，无需 npm）。
 2. 菜单「文件 → 导入 → 从本地目录导入」，选择本目录 `bama-store-miniapp`。

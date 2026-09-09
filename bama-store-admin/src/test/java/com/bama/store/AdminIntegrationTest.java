@@ -41,9 +41,12 @@ class AdminIntegrationTest {
         assertThat(call("DELETE","/api/store/"+id,admin,null).path("message").asText()).contains("先停用");
         assertThat(call("PUT","/api/store/"+id+"/status",admin,Map.of("status",2)).path("code").asInt()).isNotEqualTo(200);
         data(call("PUT","/api/store/"+id+"/status",admin,Map.of("status",0)));
+        var adminStores=data(call("GET","/api/store",admin,null));
+        assertThat(java.util.stream.StreamSupport.stream(adminStores.spliterator(),false).anyMatch(s->s.path("id").asLong()==id)).isFalse();
         var publicStores=data(call("GET","/api/customer/stores",null,null));
         assertThat(java.util.stream.StreamSupport.stream(publicStores.spliterator(),false).anyMatch(s->s.path("id").asLong()==id)).isFalse();
         data(call("PUT","/api/store/"+id+"/status",admin,Map.of("status",1)));
+        assertThat(java.util.stream.StreamSupport.stream(data(call("GET","/api/store",admin,null)).spliterator(),false).anyMatch(s->s.path("id").asLong()==id)).isTrue();
         assertThat(jdbc.queryForObject("SELECT status FROM t_store WHERE id=?",Integer.class,id)).isEqualTo(1);
         data(call("PUT","/api/store/"+id+"/status",admin,Map.of("status",0)));
         data(call("DELETE","/api/store/"+id,admin,null));
@@ -187,10 +190,19 @@ class AdminIntegrationTest {
         assertThat(history.get(0).path("storeName").asText()).isEqualTo(name);
         assertThat(history.get(0).path("storeId").asLong()).isEqualTo(branchId);
         var paused = new HashMap<String,Object>(store); paused.put("status", 0);
+        var memberBefore = jdbc.queryForMap("SELECT * FROM t_member WHERE id=?", customer.path("memberId").asLong());
+        var accountBefore = jdbc.queryForList("SELECT * FROM t_member_account WHERE member_id=?", customer.path("memberId").asLong());
         data(branchCall("PUT", "/api/store/" + branchId, admin, branchId, paused));
         assertThat(data(call("GET", "/api/customer/stores", null, null)).toString()).doesNotContain(name);
         assertThat(call("GET", "/api/customer/rooms?storeId=" + branchId, null, null).path("code").asInt()).isNotEqualTo(200);
         assertThat(call("POST", "/api/customer/reserve", customerToken, booking(secondRoom, 1, day, "19:00")).path("code").asInt()).isNotEqualTo(200);
+        var slots = data(call("GET", "/api/customer/rooms/" + secondRoom + "/slots?date=" + day, null, null));
+        assertThat(slots).isNotEmpty();
+        for (JsonNode slot : slots) assertThat(slot.path("available").asBoolean()).isFalse();
+        assertThat(jdbc.queryForMap("SELECT * FROM t_member WHERE id=?", customer.path("memberId").asLong())).isEqualTo(memberBefore);
+        assertThat(jdbc.queryForList("SELECT * FROM t_member_account WHERE member_id=?", customer.path("memberId").asLong())).isEqualTo(accountBefore);
+        assertThat(data(call("GET", "/api/customer/" + customer.path("memberId").asLong() + "/reservations", customerToken, null))).isEqualTo(history);
+        data(call("POST", "/api/customer/reserve", customerToken, booking(firstRoom, 1, day, "19:00")));
     }
 
     @Test void branchManagerCannotResetHeadquartersPasswordOrGrantHeadquartersRole() throws Exception {
@@ -289,6 +301,72 @@ class AdminIntegrationTest {
         assertThat(row.toString()).doesNotContain("password", "$2a$");
         data(call("PUT", "/api/staff/" + id + "/status?status=0", admin, null));
         assertThat(call("GET", "/api/reservations", token, null).path("code").asInt()).isEqualTo(401);
+    }
+
+    @Test void employeeRecordsIncludeRechargeGiftAndConsumptionAndEnforceScope() throws Exception {
+        long id=register(unique()).path("memberId").asLong();
+        String phone="136"+String.format("%08d",Math.abs(UUID.randomUUID().getLeastSignificantBits()%100000000));
+        jdbc.update("UPDATE t_member SET phone=? WHERE id=?",phone,id);
+        var cashierSession=data(call("POST","/api/auth/login",null,Map.of("phone","13800000001","password","123456")));
+        String cashier=cashierSession.path("token").asText();
+        long operator=cashierSession.path("staffId").asLong();
+        data(call("POST","/api/account/recharge",cashier,Map.of("memberId",id,"amount",100,"giftAmount",20)));
+        data(call("POST","/api/charge/confirm",cashier,Map.of("memberId",id,"amount",12.34,"bizNo",unique())));
+        data(call("POST","/api/account/recharge",admin,Map.of("memberId",id,"amount",5)));
+        var mine=data(call("GET","/api/staff/transactions?keyword="+phone,cashier,null));
+        assertThat(mine.path("total").asInt()).isEqualTo(3);
+        var types=new java.util.HashSet<String>();
+        for(var row:mine.path("records")) {
+            types.add(row.path("type").asText());
+            assertThat(row.path("staffId").asLong()).isEqualTo(operator);
+            assertThat(row.path("memberPhone").asText()).isEqualTo(phone);
+            assertThat(row.path("staffName").asText()).isNotBlank();
+            assertThat(row.path("storeName").asText()).isNotBlank();
+            assertThat(row.path("createTime").asText()).isNotBlank();
+            assertThat(row.path("bizNo").asText()).isNotBlank();
+        }
+        assertThat(types).containsExactlyInAnyOrder("RECHARGE","GIFT","CONSUME");
+        assertThat(data(call("GET","/api/staff/transactions?keyword="+phone+"&type=CONSUME",cashier,null)).path("total").asInt()).isEqualTo(1);
+        assertThat(call("GET","/api/staff/transactions?scope=store",cashier,null).path("code").asInt()).isEqualTo(403);
+        assertThat(call("GET","/api/staff/transactions",null,null).path("code").asInt()).isEqualTo(401);
+        assertThat(data(call("GET","/api/staff/transactions?keyword="+phone+"&scope=store",admin,null)).path("total").asInt()).isEqualTo(4);
+        long other=data(call("POST","/api/store",admin,Map.of("name",unique(),"status",1,"openTime","10:00","closeTime","22:00"))).asLong();
+        assertThat(data(branchCall("GET","/api/staff/transactions?scope=store&keyword="+phone,admin,other,null)).path("total").asInt()).isZero();
+        assertThat(call("GET","/api/staff/transactions?startDate=2026-09-09&endDate=2026-09-08",cashier,null).path("code").asInt()).isNotEqualTo(200);
+    }
+
+    @Test void phonePaymentUsesExactAmountAndRetriesWithoutDoubleDebit() throws Exception {
+        long id=register(unique()).path("memberId").asLong();
+        String phone="137"+String.format("%08d",Math.abs(UUID.randomUUID().getLeastSignificantBits()%100000000));
+        jdbc.update("UPDATE t_member SET phone=?,discount=80 WHERE id=?",phone,id);
+        data(call("POST","/api/account/recharge",admin,Map.of("memberId",id,"amount",100)));
+        assertThat(data(call("GET","/api/charge/member?phone="+phone,admin,null)).path("memberId").asLong()).isEqualTo(id);
+        assertThat(call("GET","/api/charge/member?phone="+phone,null,null).path("code").asInt()).isEqualTo(401);
+        assertThat(call("GET","/api/charge/member?phone=137",admin,null).path("code").asInt()).isNotEqualTo(200);
+        var body=Map.of("memberId",id,"expectedPhone",phone,"amount",12.34,"bizNo",unique());
+        var first=data(call("POST","/api/charge/confirm",admin,body));
+        var retry=data(call("POST","/api/charge/confirm",admin,body));
+        assertThat(first.path("payAmount").decimalValue()).isEqualByComparingTo("12.34");
+        assertThat(retry.path("orderNo").asText()).isEqualTo(first.path("orderNo").asText());
+        assertThat(data(call("GET","/api/members/"+id+"/account",admin,null)).path("balance").decimalValue()).isEqualByComparingTo("87.66");
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM t_consume_order WHERE member_id=?",Integer.class,id)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM t_wallet_txn WHERE member_id=? AND type='CONSUME'",Integer.class,id)).isEqualTo(1);
+        var detail=data(call("POST","/api/charge/confirm",admin,Map.of("memberId",id,"bizNo",unique(),"items",List.of(Map.of("itemType","PRODUCT","itemName","茶叶","price",10,"quantity",1)))));
+        assertThat(detail.path("payAmount").decimalValue()).isEqualByComparingTo("8.00");
+    }
+
+    @Test void manualPaymentRejectsInvalidAmountsAndChangedPhoneWithoutDebiting() throws Exception {
+        long id=register(unique()).path("memberId").asLong();
+        data(call("POST","/api/account/recharge",admin,Map.of("memberId",id,"amount",100)));
+        for(Object amount:List.of(-1,0,1.001,100000000,101)) {
+            assertThat(call("POST","/api/charge/confirm",admin,Map.of("memberId",id,"amount",amount,"bizNo",unique())).path("code").asInt()).isNotEqualTo(200);
+        }
+        assertThat(call("POST","/api/charge/confirm",admin,Map.of("memberId",id,"amount",10)).path("code").asInt()).isNotEqualTo(200);
+        assertThat(call("POST","/api/charge/confirm",admin,Map.of("memberId",id,"amount",10,"expectedPhone","wrong","bizNo",unique())).path("code").asInt()).isNotEqualTo(200);
+        assertThat(call("POST","/api/charge/confirm",admin,Map.of("memberId",id,"amount",10,"bizNo",unique(),"items",List.of(Map.of("itemType","PRODUCT","itemName","茶","price",10,"quantity",1)))).path("code").asInt()).isNotEqualTo(200);
+        assertThat(data(call("GET","/api/members/"+id+"/account",admin,null)).path("balance").decimalValue()).isEqualByComparingTo("100");
+        jdbc.update("UPDATE t_member SET status=0 WHERE id=?",id);
+        assertThat(call("POST","/api/charge/confirm",admin,Map.of("memberId",id,"amount",10,"bizNo",unique())).path("code").asInt()).isNotEqualTo(200);
     }
 
     @Test void rechargeIsSeparatedFromGiftAndConsumptionAndAudited() throws Exception {

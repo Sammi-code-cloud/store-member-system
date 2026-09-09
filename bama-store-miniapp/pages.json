@@ -53,6 +53,10 @@
       }
     },
     {
+      "path": "pages/staff/bind-wechat",
+      "style": { "navigationBarTitleText": "员工微信绑定" }
+    },
+    {
       "path": "pages/staff/workbench",
       "style": {
         "navigationBarTitleText": "员工工作台",
@@ -70,6 +74,10 @@
       "style": {
         "navigationBarTitleText": "收款确认"
       }
+    },
+    {
+      "path": "pages/staff/records",
+      "style": { "navigationBarTitleText": "充值 / 消费记录", "enablePullDownRefresh": true }
     },
     {
       "path": "pages/staff/recharge",

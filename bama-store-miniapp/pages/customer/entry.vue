@@ -12,9 +12,8 @@
       <text class="store-name">{{ store.name }}</text>
       <text v-if="store.address" class="hint">{{ store.address }}</text>
       <text class="hint">登录后可预订茶室、查看订单和会员账户。</text>
-      <text class="privacy">首次登录需通过短信验证手机号并绑定会员，同一微信下次可直接登录。</text>
-      <button class="wechat" :disabled="busy" :loading="busy" @tap="login">微信一键登录 / 注册</button>
-      <button class="secondary" :disabled="busy" @tap="account">使用账号登录</button>
+      <text class="privacy">手动填写手机号后使用微信登录，首次登录自动注册会员。</text>
+      <button class="wechat" :disabled="busy" :loading="busy" @tap="login">填写手机号并微信登录</button>
       <text v-if="loginError" class="error">{{ loginError }}</text>
     </view>
   </view>

@@ -29,7 +29,7 @@
     </el-form>
 
     <el-alert type="info" :closable="false" show-icon style="margin-top:8px"
-              title="正在编辑顶部所选分店。暂停营业后，该分店不再展示给顾客，也不能新建预约；已有预约仍可在后台处理。" />
+              title="正在编辑顶部所选分店。暂停营业后，该分店不再展示，所属门店的业务接口停止操作；客户资料与历史记录保留。" />
   </div>
 </template>
 

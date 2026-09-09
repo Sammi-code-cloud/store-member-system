@@ -29,11 +29,12 @@
                      @change="v => onToggle(row, v)" />
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="180" fixed="right">
+      <el-table-column label="操作" width="270" fixed="right">
         <template #default="{ row }">
           <el-button link type="primary" :disabled="!userStore.has('staff:manage')" @click="openDialog(row)">编辑</el-button>
           <el-button link type="primary" :disabled="!userStore.has('staff:manage')"
                      @click="onResetPassword(row)">重置密码</el-button>
+          <el-button link type="primary" :disabled="!userStore.has('staff:manage') || row.status !== 1" @click="openBindCode(row)">绑定微信</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -74,6 +75,18 @@
       </template>
     </el-dialog>
 
+    <el-dialog v-model="bindVisible" title="员工微信绑定码" width="420px" align-center>
+      <div class="bind-code" v-loading="bindLoading">
+        <h3>{{ bindStaff.name }}</h3>
+        <img v-if="bindImage" :src="bindImage" alt="员工微信绑定二维码" />
+        <el-alert v-if="bindError" :title="bindError" type="warning" :closable="false" />
+        <p>员工使用本人微信扫一扫，输入登记的手机号即可绑定，无需密码。二维码 10 分钟内有效，只能绑定一次，请仅交给对应员工。</p>
+        <a v-if="bindImage" :href="bindImage" :download="bindStaff.name + '-微信绑定码.' + (bindImage.startsWith('data:image/png') ? 'png' : 'jpg')">下载二维码</a>
+        <el-button v-if="bindError" :loading="bindLoading" @click="openBindCode(bindStaff)">重新生成</el-button>
+        <el-button v-else-if="bindImage" :loading="bindLoading" @click="openBindCode(bindStaff)">刷新绑定码</el-button>
+      </div>
+    </el-dialog>
+
     <!-- 权限清单 -->
     <el-drawer v-model="permDrawer" title="系统权限清单" size="460px">
       <p class="drawer-tip">权限按模块划分。员工分配预设角色后，员工端与后台的功能入口会自动按角色控制。</p>
@@ -106,6 +119,19 @@ const dialog = ref(false)
 const permDrawer = ref(false)
 const roles = ref([])
 const permissions = ref([])
+const bindVisible = ref(false), bindLoading = ref(false), bindImage = ref(''), bindError = ref(''), bindStaff = ref({})
+let bindRequest = 0
+async function openBindCode(row) {
+  const requestId = ++bindRequest
+  bindStaff.value = {id: row.id, name: row.name}
+  bindVisible.value = true; bindLoading.value = true; bindImage.value = ''; bindError.value = ''
+  try {
+    const result = await api.staffWechatCode(row.id)
+    if (requestId === bindRequest) bindImage.value = result.image
+  } catch (e) {
+    if (requestId === bindRequest) bindError.value = e.message || '二维码生成失败，请重试'
+  } finally { if (requestId === bindRequest) bindLoading.value = false }
+}
 
 const form = reactive({ id: null, name: '', phone: '', password: '', roleIds: [], storeIds: [], homeStoreId: null })
 const hasHeadquartersRole = computed(() => roles.value.some(r => r.code === 'HEADQUARTERS' && form.roleIds.includes(r.id)))
@@ -159,10 +185,12 @@ async function onSave() {
   if (!form.storeIds.length || !form.storeIds.includes(form.homeStoreId)) return ElMessage.warning('请选择可访问分店，并保留所属分店')
   saving.value = true
   try {
+    let createdId = null
     if (form.id) await api.staffUpdate(form.id, { name: form.name, phone: form.phone, roleIds: form.roleIds, storeIds: form.storeIds })
-    else await api.staffCreate({ ...form, storeId: userStore.storeId })
+    else createdId = await api.staffCreate({ ...form, storeId: userStore.storeId })
     ElMessage.success(form.id ? '员工资料已更新' : '员工创建成功')
     dialog.value = false
+    if (createdId) await openBindCode({id: createdId, name: form.name})
     await userStore.loadStores()
     load()
   } finally {
@@ -203,6 +231,7 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+.bind-code{text-align:center;min-height:280px}.bind-code img{width:258px;height:258px;max-width:100%;object-fit:contain}.bind-code p{font-size:13px;line-height:1.8;color:#827568}.bind-code a{color:var(--el-color-primary)}
 .drawer-tip { font-size: 13px; color: #8a9099; line-height: 1.7; margin: 0 0 16px; }
 .scope-tip { font-size: 12px; line-height: 1.7; color: #737b87; margin: 6px 0 0; }
 .perm-group { margin-bottom: 16px; }

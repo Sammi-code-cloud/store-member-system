@@ -31,15 +31,23 @@
 import api from '@/common/api.js'
 import { wechatLogin, bindWechat } from '@/common/wechat.js'
 import { auth } from '@/common/store.js'
+import { parseStaffScene } from '@/common/staff-bind.mjs'
 
 export default {
   data() {
     return {
       form: { phone: '', password: '' },
-      bindTicket: '', loading: false
+      bindTicket: '', loading: false, bindingRedirect: false
     }
   },
+  onLoad(options) { this.openBinding(options?.scene) },
+  onShow() { this.openBinding(uni.getStorageSync('pending_staff_scene')?.scene) },
   methods: {
+    openBinding(scene) {
+      if(this.bindingRedirect || !parseStaffScene(scene))return
+      this.bindingRedirect=true
+      uni.redirectTo({url:'/pages/staff/bind-wechat?scene='+encodeURIComponent(scene),fail:()=>{this.bindingRedirect=false}})
+    },
     backToCustomer(){auth.switchToCustomer()},
     async wechat() { if(this.loading)return;this.loading=true;try{const result=await wechatLogin('STAFF');if(result.bindRequired){this.bindTicket=result.bindTicket;this.form={phone:'',password:''};return}auth.setLogin(result.account);uni.reLaunch({url:'/pages/staff/workbench'})}catch(e){uni.showToast({title:e.message||'微信登录失败',icon:'none'})}finally{this.loading=false}},
     fill(phone, password) {

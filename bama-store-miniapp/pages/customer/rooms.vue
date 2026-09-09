@@ -82,9 +82,8 @@ export default {
   },
   onLoad() {
     this.buildDates()
-    this.initStores()
   },
-  onShow() { this.loadContact() },
+  onShow() { this.loadContact(); this.initStores() },
   methods: {
     async loadContact() {
       const token=uni.getStorageSync('customer_token')
@@ -110,15 +109,21 @@ export default {
       if(this.activeRoom && !this.pick[r.id] && this.starts(r).length)this.pickSlot(r.id,this.starts(r)[0].time)
     },
     async initStores() {
+      const version=++this.requestVersion
+      this.stores=[]; this.rooms=[]; this.activeRoom=null; this.booking=null; this.pick={}; this.ends={}; this.occupied={}; this.slotMap={}
       try {
-        this.stores=await api.customerStores()
+        const stores=await api.customerStores()
+        if(version!==this.requestVersion)return
+        this.stores=stores
         const saved=Number(uni.getStorageSync('customer_store_id'))
         this.storeIndex=Math.max(0,this.stores.findIndex(s=>s.id===saved))
         if(this.stores.length) { uni.setStorageSync('customer_store_id',this.stores[this.storeIndex].id); await this.loadRooms() }
-      } catch(e) {}
+        else uni.removeStorageSync('customer_store_id')
+      } catch(e) { if(version===this.requestVersion)uni.removeStorageSync('customer_store_id') }
     },
     async changeStore(e) {
       this.storeIndex=Number(e.detail.value)
+      if(!this.stores[this.storeIndex])return
       uni.setStorageSync('customer_store_id',this.stores[this.storeIndex].id)
       this.activeRoom=null; this.requestVersion++; this.pick={}; this.ends={}; this.occupied={}; this.slotMap={}; this.rooms=[]
       await this.loadRooms()
@@ -144,9 +149,13 @@ export default {
       this.selDate = arr[0].date
     },
     async loadRooms() {
+      const storeId=this.stores[this.storeIndex]?.id, version=this.requestVersion
+      if(!storeId){this.rooms=[];return}
       this.loading = true
       try {
-        this.rooms = await api.customerRooms(this.stores[this.storeIndex].id)
+        const rooms=await api.customerRooms(storeId)
+        if(version!==this.requestVersion || storeId!==this.stores[this.storeIndex]?.id)return
+        this.rooms = rooms
         await this.loadSlots()
       } catch (e) {
       } finally {

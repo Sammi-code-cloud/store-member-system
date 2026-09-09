@@ -33,11 +33,16 @@ export default function request(options) {
         }
         const msg = (body && body.message) || '请求失败'
         if (body && body.code === 401) {
-          uni.removeStorageSync(customer ? 'customer_token' : 'token')
-          if (customer) uni.removeStorageSync('customer_user')
-          uni.showToast({ title: '登录已失效，请重新登录', icon: 'none' })
-          setTimeout(() => uni.reLaunch({ url: customer ? '/pages/customer/login' : '/pages/staff/login' }), 800)
-        } else {
+          const tokenKey = customer ? 'customer_token' : 'token'
+          if (uni.getStorageSync(tokenKey) === token) {
+            uni.removeStorageSync(tokenKey)
+            uni.removeStorageSync(customer ? 'customer_user' : 'staff')
+          }
+          if (!options.silent) {
+            uni.showToast({ title: '登录已失效，请重新登录', icon: 'none' })
+            setTimeout(() => uni.reLaunch({ url: customer ? '/pages/customer/login' : '/pages/staff/login' }), 800)
+          }
+        } else if (!options.silent) {
           uni.showToast({ title: msg, icon: 'none' })
         }
         reject(body || res)
@@ -47,7 +52,7 @@ export default function request(options) {
         // Keep the native reason for debugging; never log credentials, bodies or query strings.
         error.errMsg = err.errMsg
         console.warn('[门店请求失败]', options.url.split('?')[0], String(err.errMsg || '').replace(/https?:\/\/\S+/g, '[服务地址]'))
-        uni.showToast({ title: error.message, icon: 'none', duration: 4000 })
+        if (!options.silent) uni.showToast({ title: error.message, icon: 'none', duration: 4000 })
         reject(error)
       }
     })

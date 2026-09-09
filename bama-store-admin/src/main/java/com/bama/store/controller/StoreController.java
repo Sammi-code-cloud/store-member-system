@@ -36,7 +36,7 @@ public class StoreController {
         var user = com.bama.store.security.SecurityUtil.current();
         var q = new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<Store>();
         if (user.getStoreIds().isEmpty()) return Result.success(java.util.List.of());
-        q.in(Store::getId, user.getStoreIds());
+        q.in(Store::getId, user.getStoreIds()).eq(Store::getStatus, 1);
         return Result.success(storeMapper.selectList(q.orderByAsc(Store::getId)));
     }
 
