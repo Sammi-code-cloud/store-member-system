@@ -4,7 +4,7 @@ import router from '@/router'
 
 // 统一请求实例：开发期由 Vite 代理转发到后端，生产期由 Nginx 反代
 const request = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE || '/api',
+  baseURL: import.meta.env.VITE_API_BASE || import.meta.env.BASE_URL + 'api',
   timeout: 15000
 })
 

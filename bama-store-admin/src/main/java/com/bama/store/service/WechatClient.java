@@ -43,6 +43,10 @@ public class WechatClient {
   if(ticket==null || !ticket.matches("[A-Za-z0-9_-]{22}"))throw new BusinessException("员工绑定码无效");
   return miniCode("b="+ticket,"pages/staff/login",staffCodeEnvironment);
  }
+ public String desktopLoginCode(String ticket) {
+  if(ticket==null || !ticket.matches("[A-Za-z0-9_-]{22}"))throw new BusinessException("登录码无效");
+  return miniCode("l="+ticket,"pages/staff/login",staffCodeEnvironment);
+ }
  public String memberBindCode(String ticket) {
   if(ticket==null || !ticket.matches("[A-Za-z0-9_-]{22}"))throw new BusinessException("会员绑定码无效");
   return miniCode("m="+ticket,"pages/customer/login",staffCodeEnvironment);

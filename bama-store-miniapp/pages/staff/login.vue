@@ -41,9 +41,11 @@ export default {
     }
   },
   onLoad(options) { this.openBinding(options?.scene) },
-  onShow() { this.openBinding(uni.getStorageSync('pending_staff_scene')?.scene) },
+  onShow() { const desktop=uni.getStorageSync('pending_desktop_scene');if(desktop){this.openBinding(desktop);return}this.openBinding(uni.getStorageSync('pending_staff_scene')?.scene) },
   methods: {
     openBinding(scene) {
+      if(this.bindingRedirect)return
+      if(typeof scene==='string'){let decoded='';try{decoded=decodeURIComponent(scene)}catch{};if(/^l=[A-Za-z0-9_-]{22}$/.test(decoded)){this.bindingRedirect=true;uni.removeStorageSync('pending_desktop_scene');uni.redirectTo({url:'/pages/staff/desktop-login?ticket='+decoded.slice(2)});return}}
       if(this.bindingRedirect || !parseStaffScene(scene))return
       this.bindingRedirect=true
       uni.redirectTo({url:'/pages/staff/bind-wechat?scene='+encodeURIComponent(scene),fail:()=>{this.bindingRedirect=false}})

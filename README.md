@@ -36,7 +36,7 @@
 |---|---|---|---|
 | 顾客端 | `bama-store-miniapp/pages/customer/` | 首页、茶室预定、付款码、我的 | ✅ 已完成 |
 | 员工端 | `bama-store-miniapp/pages/staff/` | 登录、工作台、扫码、收款、储值、概览 | ✅ 已完成 |
-| 演示页 | `demo-h5/` | 纯 HTML 实机演示（免装小程序环境，浏览器直接跑） | ✅ 已完成 |
+| 演示页 | `docs/demo-h5/` | 纯 HTML 实机演示（免装小程序环境，浏览器直接跑） | ✅ 已完成 |
 | 后端服务 | `bama-store-admin/` | Spring Boot，11 个 Controller | ✅ 已完成 |
 | 管理后台 | `bama-store-web/` | 数据概览、代客储值、预定核销、会员、货品、茶室、员工权限、门店设置 | ✅ 已完成 |
 
@@ -79,12 +79,12 @@ store-member-system/
 │   └── src/views/                   9 个业务页面
 ├── bama-store-miniapp/              uni-app 小程序（顾客端 + 员工端）
 ├── docs/                           使用、接入、部署与设计文档
+│   └── demo-h5/                     纯 HTML 演示页
+│       ├── index.html               员工端
+│       ├── customer.html            顾客端
+│       └── server.js                静态服务器（端口 8081）
 ├── assets/branding/                小程序头像
 ├── .local/                         私有配置与运维记录（不提交）
-├── demo-h5/                         纯 HTML 演示页
-│   ├── index.html                   员工端
-│   ├── customer.html                顾客端
-│   └── server.js                    静态服务器（端口 8081）
 └── README.md
 ```
 
@@ -118,7 +118,7 @@ mvn spring-boot:run -Dspring-boot.run.profiles=h2        # 免装 MySQL，H2 内
 ### 4. 启动演示页（另开终端）
 
 ```bash
-cd demo-h5
+cd docs/demo-h5
 node server.js
 ```
 
@@ -223,8 +223,8 @@ npm run dev:mp-weixin    # 微信小程序，产物在 dist/dev/mp-weixin
 
 ### 接口地址写死的位置
 换机器或部署时需同步修改以下 3 处：
-- `demo-h5/index.html` 第 203 行 `const BASE = 'http://127.0.0.1:8080'`
-- `demo-h5/customer.html` 第 362 行 `const BASE = 'http://127.0.0.1:8080'`
+- `docs/demo-h5/index.html` 第 203 行 `const BASE = 'http://127.0.0.1:8080'`
+- `docs/demo-h5/customer.html` 第 362 行 `const BASE = 'http://127.0.0.1:8080'`
 - `bama-store-miniapp/common/request.js` 第 4 行 `BASE_URL = 'http://localhost:8080'`
 
 ### 生产部署

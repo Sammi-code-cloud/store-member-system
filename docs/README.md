@@ -8,6 +8,7 @@
 | `docs/integrations/` | 微信、短信等外部服务接入说明 |
 | `docs/deployment/` | 通用部署流程与 MySQL 配置说明 |
 | `docs/design/` | 后台功能方案 |
+| `docs/demo-h5/` | 员工端、顾客端 HTML 演示页与本地预览服务器 |
 | `assets/branding/` | 八马小程序头像原图 |
 | `.local/operations/` | 本机完整部署历史，不提交 |
 | `.local/config/` | 本机服务器连接资料，不提交 |

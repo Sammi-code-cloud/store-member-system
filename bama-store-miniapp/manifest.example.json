@@ -2,8 +2,8 @@
   "name": "八马门店",
   "appid": "",
   "description": "八马门店系统 · 顾客端 + 员工端",
-  "versionName": "1.0.16",
-  "versionCode": "116",
+  "versionName": "1.0.17",
+  "versionCode": "117",
   "transformPx": false,
   "app-plus": {
     "usingComponents": true,

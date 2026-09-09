@@ -3,7 +3,8 @@ import vue from '@vitejs/plugin-vue'
 import { fileURLToPath, URL } from 'node:url'
 
 // 后台管理端构建配置
-export default defineConfig({
+export default defineConfig(({ command }) => ({
+  base: process.env.VITE_BASE_PATH || (command === 'build' ? '/bama/' : '/'),
   plugins: [vue()],
   resolve: {
     alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) }
@@ -19,4 +20,4 @@ export default defineConfig({
       }
     }
   }
-})
+}))

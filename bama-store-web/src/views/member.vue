@@ -27,7 +27,7 @@
       <div v-loading="detailLoading">
         <el-descriptions :column="2" border>
           <el-descriptions-item label="顾客">{{ current.name }}</el-descriptions-item><el-descriptions-item label="编号">{{ current.memberNo }}</el-descriptions-item>
-          <el-descriptions-item label="手机号">{{ current.phone || '未绑定' }}</el-descriptions-item><el-descriptions-item label="等级">{{ levels[current.level] }} · {{ Number(current.discount || 100) / 10 }} 折</el-descriptions-item>
+          <el-descriptions-item label="手机号">{{ current.phone || '未绑定' }}</el-descriptions-item><el-descriptions-item label="等级">{{ levels[current.level] }}</el-descriptions-item>
           <el-descriptions-item label="卡内余额">¥{{ money(account.balance) }}</el-descriptions-item><el-descriptions-item label="累计充值本金">¥{{ money(account.totalRecharge) }}</el-descriptions-item>
           <el-descriptions-item label="累计消费">¥{{ money(account.totalConsume) }}</el-descriptions-item>
           <el-descriptions-item label="门店备注" :span="2">{{ current.remark || '暂无备注' }}</el-descriptions-item>

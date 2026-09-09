@@ -1,10 +1,10 @@
 /* Shared same-origin website login popup. No AppSecret or openid accepted from the browser. */
 window.WechatLogin = {
  async open(audience) {
-  const response=await fetch('/api/wechat/config');const configuration=await response.json();
+  const response=await fetch('./api/wechat/config');const configuration=await response.json();
   if(configuration.code!==200 || !configuration.data?.webEnabled)throw new Error(configuration.message && configuration.code!==200 ? configuration.message : '网站微信登录尚未配置，请先使用账号密码登录');
   return new Promise((resolve,reject)=>{
-   const popup=window.open('/wechat-login.html?audience='+encodeURIComponent(audience),'wechat_login','width=480,height=700');
+   const popup=window.open('./wechat-login.html?audience='+encodeURIComponent(audience),'wechat_login','width=480,height=700');
    if(!popup)return reject(new Error('请允许弹出微信登录窗口'));
    let timer, poll;
    const cleanup=()=>{clearTimeout(timer);clearInterval(poll);window.removeEventListener('message',receive)};

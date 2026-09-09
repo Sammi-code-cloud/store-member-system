@@ -4,6 +4,7 @@ import { parseStaffScene } from './common/staff-bind.mjs'
 export default {
   onShow(options) {
     rememberScan(options, uni)
+    if(options?.path==='pages/staff/login' && options.query?.scene){let scene='';try{scene=decodeURIComponent(options.query.scene)}catch{};if(/^l=[A-Za-z0-9_-]{22}$/.test(scene))uni.setStorageSync('pending_desktop_scene',scene)}
     if(options?.path==='pages/customer/login' && options.query?.scene)uni.setStorageSync('pending_member_scene',{scene:options.query.scene})
     if (['pages/staff/login','pages/staff/bind-wechat'].includes(options?.path) && parseStaffScene(options.query?.scene)) uni.setStorageSync('pending_staff_scene', {scene: options.query.scene})
   },

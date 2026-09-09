@@ -79,3 +79,4 @@ bama-store-admin/.local/
 project.private.config.json
 *.sql.gz
 *.dump
+/bama-store-web/dist-login-fix/

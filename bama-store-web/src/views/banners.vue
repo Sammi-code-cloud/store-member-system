@@ -27,7 +27,7 @@ import {ref,onMounted} from 'vue'
 import {ElMessage,ElMessageBox} from 'element-plus'
 import request from '@/utils/request'
 const items=ref([]),loading=ref(false),visible=ref(false),saving=ref(false),reading=ref(false),form=ref({}),preview=ref('')
-const imageUrl=url=>(import.meta.env.VITE_API_BASE || '/api').replace(/\/$/,'')+url.replace(/^\/api/,'')
+const imageUrl=url=>request.defaults.baseURL.replace(/\/$/,'')+url.replace(/^\/api/,'')
 async function load(){loading.value=true;try{items.value=await request.get('/banners')}finally{loading.value=false}}
 function edit(row){form.value=row?{id:row.id,title:row.title,sortOrder:row.sortOrder,status:row.status,target:row.target}:{title:'',sortOrder:items.value.length,status:1,target:'none'};preview.value=row?imageUrl(row.imageUrl):'';visible.value=true}
 function close(done){if(!saving.value)done()}

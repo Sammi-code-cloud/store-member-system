@@ -16,7 +16,7 @@ const server = http.createServer((req, res) => {
   let pathname
   try { pathname = decodeURIComponent(new URL(req.url, 'http://localhost').pathname) } catch { res.writeHead(400); res.end(); return }
   let file
-  if (['/customer.html', '/customer-auth.js'].includes(pathname)) file = path.join(__dirname, '..', 'demo-h5', pathname.slice(1))
+  if (['/customer.html', '/customer-auth.js'].includes(pathname)) file = path.join(__dirname, '..', 'docs', 'demo-h5', pathname.slice(1))
   else {
     file = path.resolve(root, '.' + (pathname === '/' ? '/index.html' : pathname))
     if (!file.startsWith(root + path.sep)) { res.writeHead(403); res.end(); return }

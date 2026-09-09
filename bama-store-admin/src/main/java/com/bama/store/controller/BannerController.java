@@ -18,6 +18,10 @@ import java.util.*;
 public class BannerController {
     private final JdbcTemplate jdbc;
     private final AuditService audit;
+    private final com.bama.store.service.BannerImages optimizer;
+    private final Map<String,com.bama.store.service.BannerImages.Image> imageCache=Collections.synchronizedMap(new LinkedHashMap<>(32,.75f,true){
+        @Override protected boolean removeEldestEntry(Map.Entry<String,com.bama.store.service.BannerImages.Image> entry){return size()>32;}
+    });
     public record Input(Long id, String title, String image, Integer sortOrder, Integer status, String target) {}
     private Map<String,Object> item(java.sql.ResultSet r) throws java.sql.SQLException {
         return Map.of("id",r.getLong("id"),"title",r.getString("title"),"sortOrder",r.getInt("sort_order"),"status",r.getInt("status"),"target",r.getString("target"),"imageUrl","/api/banner-images/"+r.getLong("id")+"?v="+r.getString("version"));
@@ -31,11 +35,20 @@ public class BannerController {
         return Result.success(jdbc.query("SELECT b.id,b.title,b.sort_order,b.status,b.target,b.version FROM t_banner b JOIN t_store s ON s.id=b.store_id WHERE b.store_id=? AND b.status=1 AND s.status=1 AND s.deleted=0 ORDER BY b.sort_order,b.id",(r,n)->item(r),storeId));
     }
     @GetMapping("/api/banner-images/{id}")
-    public ResponseEntity<byte[]> image(@PathVariable Long id) {
-        var images=jdbc.queryForList("SELECT image_data FROM t_banner WHERE id=?",String.class,id);
-        if(images.isEmpty())return ResponseEntity.notFound().build();
-        String image=images.get(0);
-        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).contentType(MediaType.parseMediaType(image.substring(5,image.indexOf(';')))).body(Base64.getDecoder().decode(image.substring(image.indexOf(',')+1)));
+    public ResponseEntity<byte[]> image(@PathVariable Long id,@RequestParam(required=false) String v,@RequestHeader(value="If-None-Match",required=false) String ifNoneMatch) {
+        var versions=jdbc.queryForList("SELECT version FROM t_banner WHERE id=?",String.class,id);
+        if(versions.isEmpty())return ResponseEntity.notFound().build();
+        String version=versions.get(0),key=id+"-"+version+"-opt1",etag="\""+key+"\"";
+        CacheControl cache=version.equals(v)?CacheControl.maxAge(java.time.Duration.ofDays(7)).cachePublic():CacheControl.noCache();
+        if(ifNoneMatch!=null && Arrays.stream(ifNoneMatch.split(",")).map(String::trim).anyMatch(t->"*".equals(t)||etag.equals(t.replaceFirst("^W/",""))))
+            return ResponseEntity.status(304).cacheControl(cache).eTag(etag).build();
+        var image=imageCache.get(key);
+        if(image==null){
+            var images=jdbc.queryForList("SELECT image_data FROM t_banner WHERE id=? AND version=?",String.class,id,version);
+            if(images.isEmpty())return ResponseEntity.status(409).cacheControl(CacheControl.noStore()).build();
+            image=optimizer.optimize(images.get(0));imageCache.put(key,image);
+        }
+        return ResponseEntity.ok().cacheControl(cache).eTag(etag).contentType(MediaType.parseMediaType(image.type())).body(image.bytes());
     }
     @PostMapping("/api/banners") @PreAuthorize("hasAuthority('store:manage')") @Transactional
     public Result<?> save(@RequestBody Input body) {
@@ -89,7 +102,7 @@ public class BannerController {
                     String format=data.startsWith("data:image/png;")?"png":"jpeg";
                     if(!ImageIO.write(decoded,format,out))throw new IOException();
                     if(out.size()>2*1024*1024)throw new IOException();
-                    return "data:image/"+format+";base64,"+Base64.getEncoder().encodeToString(out.toByteArray());
+                    return optimizer.dataUrl("data:image/"+format+";base64,"+Base64.getEncoder().encodeToString(out.toByteArray()));
                 } finally { reader.dispose(); }
             }
         } catch(Exception e) { throw new BusinessException("请上传2MB以内的有效JPG/PNG图片，尺寸100×50至6000×6000，总像素不超过1600万"); }

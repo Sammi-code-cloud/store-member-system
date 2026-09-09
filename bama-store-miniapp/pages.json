@@ -7,6 +7,7 @@
         "navigationStyle": "custom"
       }
     },
+    {"path":"pages/staff/desktop-login","style":{"navigationBarTitleText":"确认后台登录"}},
     {
       "path": "pages/customer/bind-phone",
       "style": { "navigationBarTitleText": "绑定手机号" }

@@ -123,4 +123,17 @@ class CustomerManualWechatTest {
   assertThat(login(phone).at("/data/account/memberId").asLong()).isEqualTo(id);
   assertThat(login("").at("/data/account/memberId").asLong()).isEqualTo(id);
  }
+
+ @Test void desktopEndpointsAllowOnlyBoundStaffAndBrowserCanCollect() throws Exception {
+  when(wechat.desktopLoginCode(anyString())).thenReturn("data:image/png;base64,test");
+  var created=adminCall("/api/wechat/desktop/create",Map.of(),null);
+  assertThat(created.path("code").asInt()).isEqualTo(200);
+  String ticket=created.at("/data/ticket").asText(),secret=created.at("/data/secret").asText();
+  assertThat(adminCall("/api/wechat/desktop/poll",Map.of("ticket",ticket,"secret",secret),null).at("/data/status").asText()).isEqualTo("WAITING");
+  jdbc.update("INSERT INTO t_wechat_account(identity_key,audience,account_id) VALUES(?,'STAFF',1)","APP:"+WechatFlows.hash("app:"+code));
+  assertThat(adminCall("/api/wechat/desktop/confirm",Map.of("ticket",ticket,"code",code),null).path("code").asInt()).isEqualTo(200);
+  var result=adminCall("/api/wechat/desktop/poll",Map.of("ticket",ticket,"secret",secret),null);
+  assertThat(result.at("/data/status").asText()).isEqualTo("CONFIRMED");
+  assertThat(result.at("/data/account/staffId").asLong()).isEqualTo(1);
+ }
 }

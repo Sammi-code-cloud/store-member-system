@@ -16,7 +16,7 @@ const server = http.createServer((req, res) => {
   }
   let file = req.url === '/' ? '/index.html' : req.url.split('?')[0]
   const wxAssets=['/wechat-login.html','/wechat-login.js','/wechat-callback.js']
-  const full = wxAssets.includes(file) ? path.join(ROOT,'../bama-store-web/public',file.slice(1)) : path.join(ROOT, decodeURIComponent(file))
+  const full = wxAssets.includes(file) ? path.join(ROOT,'../../bama-store-web/public',file.slice(1)) : path.join(ROOT, decodeURIComponent(file))
   fs.readFile(full, (err, data) => {
     if (err) {
       res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' })
