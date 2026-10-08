@@ -18,12 +18,31 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 
 @SpringBootTest(properties={"spring.datasource.url=jdbc:h2:mem:manual_login;DB_CLOSE_DELAY=-1;MODE=MySQL;DATABASE_TO_LOWER=TRUE","logging.level.root=ERROR","logging.level.com.bama.store=ERROR","mybatis-plus.configuration.log-impl=org.apache.ibatis.logging.nologging.NoLoggingImpl"})
 @ActiveProfiles("h2") @AutoConfigureMockMvc(print=org.springframework.boot.test.autoconfigure.web.servlet.MockMvcPrint.NONE)
+@org.springframework.test.context.jdbc.Sql(statements = "UPDATE t_business_dictionary SET dict_value='1' WHERE dict_key='business_enabled'")
 class CustomerManualWechatTest {
  @Autowired MockMvc mvc; @Autowired ObjectMapper json; @Autowired JdbcTemplate jdbc;
  @MockBean WechatClient wechat;
+ @MockBean SmsSender sms;
+ final Map<String,String> received=new HashMap<>();
  String code; String phone;
- @BeforeEach void setup(){code=UUID.randomUUID().toString();phone="135"+String.format("%08d",Math.abs(UUID.randomUUID().getLeastSignificantBits()%100000000));when(wechat.exchange("MINI",code)).thenReturn(new WechatClient.Identity("app",code,""));}
- JsonNode login(String phone) throws Exception{return json.readTree(mvc.perform(post("/api/wechat/customer/manual-login").contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(Map.of("code",code,"phone",phone,"name","测试称呼")))).andReturn().getResponse().getContentAsByteArray());}
+ @BeforeEach void setup(){jdbc.update("DELETE FROM t_sms_challenge");when(sms.ready()).thenReturn(true);doAnswer(i->{received.put(i.getArgument(0),i.getArgument(1));return null;}).when(sms).send(anyString(),anyString());code=UUID.randomUUID().toString();phone="135"+String.format("%08d",Math.abs(UUID.randomUUID().getLeastSignificantBits()%100000000));when(wechat.exchange("MINI",code)).thenReturn(new WechatClient.Identity("app",code,""));}
+ JsonNode rawLogin(String phone) throws Exception {return adminCall("/api/wechat/customer/manual-login",Map.of("code",code,"phone",phone,"name","测试称呼"),null);}
+ JsonNode verified(JsonNode result,String phone) throws Exception {
+  if(!result.at("/data/bindRequired").asBoolean() || phone.isBlank())return result;
+  String ticket=result.at("/data/bindTicket").asText();
+  var sent=adminCall("/api/wechat/customer/sms",Map.of("ticket",ticket,"phone",phone),null);
+  if(sent.path("code").asInt()!=200)return sent;
+  return adminCall("/api/wechat/customer/bind",Map.of("ticket",ticket,"phone",phone,"challenge",sent.at("/data/challenge").asText(),"code",received.get(phone)),null);
+ }
+ JsonNode login(String phone) throws Exception {return verified(rawLogin(phone),phone);}
+ @Test void typedPhoneCannotBindWithoutSms() throws Exception {
+  int before=jdbc.queryForObject("SELECT COUNT(*) FROM t_member",Integer.class);
+  var pending=rawLogin(phone);assertThat(pending.at("/data/bindRequired").asBoolean()).isTrue();
+  assertThat(pending.at("/data/account/token").isMissingNode()).isTrue();
+  assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM t_member",Integer.class)).isEqualTo(before);
+  String ticket=pending.at("/data/bindTicket").asText();
+  assertThat(adminCall("/api/wechat/customer/bind",Map.of("ticket",ticket,"phone",phone),null).path("code").asInt()).isEqualTo(400);
+ }
  @Test void newWechatCreatesMemberAndRepeatedLoginPreservesWallet() throws Exception {
   var first=login(phone);assertThat(first.path("code").asInt()).isEqualTo(200);long id=first.at("/data/account/memberId").asLong();
   assertThat(jdbc.queryForObject("SELECT balance FROM t_member_account WHERE member_id=?",java.math.BigDecimal.class,id)).isEqualByComparingTo("0");
@@ -32,7 +51,7 @@ class CustomerManualWechatTest {
   var again=login(phone);assertThat(again.at("/data/account/memberId").asLong()).isEqualTo(id);
   assertThat(jdbc.queryForObject("SELECT balance FROM t_member_account WHERE member_id=?",java.math.BigDecimal.class,id)).isEqualByComparingTo("268");
   assertThat(jdbc.queryForObject("SELECT points FROM t_member WHERE id=?",Integer.class,id)).isEqualTo(88);
-  assertThat(jdbc.queryForObject("SELECT name FROM t_member WHERE id=?",String.class,id)).isEqualTo("测试称呼");
+  assertThat(jdbc.queryForObject("SELECT name FROM t_member WHERE id=?",String.class,id)).isEqualTo("微信顾客");
  }
  @Test void anotherWechatCannotClaimExistingPhoneOrMoney() throws Exception {
   var first=login(phone);long id=first.at("/data/account/memberId").asLong();
@@ -44,7 +63,7 @@ class CustomerManualWechatTest {
  }
  @Test void wrongPhoneOrDisabledMemberCannotLogin() throws Exception {
   long id=login(phone).at("/data/account/memberId").asLong();
-  assertThat(login("13400001234").path("code").asInt()).isEqualTo(400);
+  assertThat(login("13400001234").at("/data/account/memberId").asLong()).isEqualTo(id);
   jdbc.update("UPDATE t_member SET status=0 WHERE id=?",id);
   assertThat(login(phone).path("code").asInt()).isEqualTo(400);
  }
@@ -74,7 +93,11 @@ class CustomerManualWechatTest {
   var capture=org.mockito.ArgumentCaptor.forClass(String.class);verify(wechat).memberBindCode(capture.capture());String ticket=capture.getValue();
   String route="/api/wechat/customer/member-bind";
   assertThat(adminCall(route,Map.of("ticket",ticket,"phone","13300001234","code",code),null).path("code").asInt()).isEqualTo(400);
-  var result=adminCall(route,Map.of("ticket",ticket,"phone",phone,"code",code),null);
+  var pending=adminCall(route,Map.of("ticket",ticket,"phone",phone,"code",code),null);
+  assertThat(pending.at("/data/bindRequired").asBoolean()).isTrue();
+  assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM t_wechat_account WHERE audience='CUSTOMER' AND account_id=?",Integer.class,id)).isZero();
+  assertThat(adminCall("/api/wechat/customer/sms",Map.of("ticket",pending.at("/data/bindTicket").asText(),"phone","13300001234"),null).path("code").asInt()).isEqualTo(400);
+  var result=verified(pending,phone);
   assertThat(result.path("code").asInt()).isEqualTo(200);assertThat(result.at("/data/account/memberId").asLong()).isEqualTo(id);
   assertThat(jdbc.queryForObject("SELECT balance FROM t_member_account WHERE member_id=?",java.math.BigDecimal.class,id)).isEqualByComparingTo("200");
   assertThat(adminCall(route,Map.of("ticket",ticket,"phone",phone,"code",code),null).path("code").asInt()).isEqualTo(400);
@@ -112,14 +135,20 @@ class CustomerManualWechatTest {
  @Test void unknownWechatRequestsPhoneWithoutCreatingMember() throws Exception {
   int before=jdbc.queryForObject("SELECT COUNT(*) FROM t_member",Integer.class);
   var result=login("");
-  assertThat(result.at("/data/manualPhoneRequired").asBoolean()).isTrue();
+  assertThat(result.at("/data/bindRequired").asBoolean()).isTrue();
   assertThat(result.at("/data/account").isMissingNode()).isTrue();
   assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM t_member",Integer.class)).isEqualTo(before);
  }
- @Test void boundMemberWithoutPhoneMustCompleteProfile() throws Exception {
+ @Test void existingWechatWithoutSmsHistoryLogsInDirectly() throws Exception {
   long id=login(phone).at("/data/account/memberId").asLong();
   jdbc.update("UPDATE t_member SET phone=NULL WHERE id=?",id);
-  assertThat(login("").at("/data/manualPhoneRequired").asBoolean()).isTrue();
+  jdbc.update("DELETE FROM t_wechat_phone_verified WHERE member_id=?",id);
+  jdbc.update("DELETE FROM t_sms_challenge");
+  clearInvocations(sms);
+  var result=rawLogin("");
+  assertThat(result.at("/data/bindRequired").asBoolean()).isFalse();
+  assertThat(result.at("/data/account/memberId").asLong()).isEqualTo(id);
+  verify(sms,never()).send(anyString(),anyString());
   assertThat(login(phone).at("/data/account/memberId").asLong()).isEqualTo(id);
   assertThat(login("").at("/data/account/memberId").asLong()).isEqualTo(id);
  }

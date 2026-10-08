@@ -16,6 +16,7 @@ import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
 @SpringBootTest(properties={"spring.datasource.url=jdbc:h2:mem:wechat_test;DB_CLOSE_DELAY=-1;MODE=MySQL;DATABASE_TO_LOWER=TRUE","logging.level.root=WARN","logging.level.com.bama.store=WARN","mybatis-plus.configuration.log-impl=org.apache.ibatis.logging.nologging.NoLoggingImpl"})
 @ActiveProfiles("h2") @AutoConfigureMockMvc(print=org.springframework.boot.test.autoconfigure.web.servlet.MockMvcPrint.NONE)
+@org.springframework.test.context.jdbc.Sql(statements = "UPDATE t_business_dictionary SET dict_value='1' WHERE dict_key='business_enabled'")
 class WechatIntegrationTest {
  @Autowired MockMvc mvc; @Autowired ObjectMapper json; @Autowired WechatFlows flows;
  @Autowired org.springframework.jdbc.core.JdbcTemplate jdbc;
@@ -266,13 +267,14 @@ class WechatIntegrationTest {
   String code=mock(openid,"");
   String phone=Long.toString(phones.incrementAndGet());
   long other=customers.createWechatMember(phone);
-  String ticket=pending(code).path("bindTicket").asText();
-  String challenge=data(call("customer/sms",Map.of("ticket",ticket,"phone",phone))).path("challenge").asText();
-  assertThat(call("customer/bind",Map.of("ticket",ticket,"phone",phone,"challenge",challenge,"code",received.get(phone))).path("code").asInt()).isNotEqualTo(200);
+  var returning=pending(code);
+  assertThat(returning.path("bindRequired").asBoolean()).isFalse();
+  assertThat(returning.has("bindTicket")).isFalse();
+  assertThat(returning.path("account").path("memberId").asLong()).isEqualTo(id);
+  assertThat(call("customer/bind",Map.of("ticket","","phone",phone,"challenge","","code","000000")).path("code").asInt()).isNotEqualTo(200);
   assertThat(jdbc.queryForObject("SELECT balance FROM t_member_account WHERE member_id=?",java.math.BigDecimal.class,id)).isEqualByComparingTo("77");
   assertThat(customers.requireActive(other).getPhone()).isEqualTo(phone);
-  jdbc.update("DELETE FROM t_sms_challenge");
-  assertThat(bindCustomer(pending(code),Long.toString(phones.incrementAndGet())).path("memberId").asLong()).isEqualTo(id);
+  verify(sms,never()).send(anyString(),anyString());
  }
  @Test void frozenMemberCannotBeClaimedWithVerifiedPhone() throws Exception {
   String phone=Long.toString(phones.incrementAndGet());long id=customers.createWechatMember(phone);

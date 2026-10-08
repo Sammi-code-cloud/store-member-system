@@ -20,10 +20,45 @@ import static org.assertj.core.api.Assertions.assertThat;
 @ActiveProfiles("h2")
 @AutoConfigureMockMvc(print=org.springframework.boot.test.autoconfigure.web.servlet.MockMvcPrint.NONE)
 @Transactional
+@org.springframework.test.context.jdbc.Sql(statements = "UPDATE t_business_dictionary SET dict_value='1' WHERE dict_key='business_enabled'")
 class StoreAccessIntegrationTest {
     @Autowired MockMvc mvc;
     @Autowired ObjectMapper json;
     @Autowired JdbcTemplate jdbc;
+    @Autowired com.bama.store.service.WxPusherRecipients noticeRecipients;
+
+    @Test void wxpusherSettingsAreAuthorizedStoreScopedAndImmediatelyApplied() throws Exception {
+        String admin=login();
+        data(call("PUT","/api/staff/2/wxpusher",admin,1L,Map.of("uid"," UID_cashier ")));
+        assertThat(noticeRecipients.recipients(1L)).containsExactly("UID_cashier");
+        var staff=data(call("GET","/api/staff",admin,1L,null)).path("records");
+        assertThat(java.util.stream.StreamSupport.stream(staff.spliterator(),false)
+                .filter(s -> s.path("id").asLong()==2).findFirst().orElseThrow().path("wxpusherUid").asText()).isEqualTo("UID_cashier");
+        assertThat(call("PUT","/api/staff/2/wxpusher",admin,1L,Map.of("uid","invalid")).path("code").asInt()).isEqualTo(400);
+        String cashier=data(call("POST","/api/auth/login",null,null,Map.of("phone","13800000001","password","123456"))).path("token").asText();
+        assertThat(call("PUT","/api/staff/2/wxpusher",cashier,1L,Map.of("uid","UID_hijack")).path("code").asInt()).isEqualTo(403);
+        long other=branch(admin);
+        assertThat(call("PUT","/api/staff/2/wxpusher",admin,other,Map.of("uid","UID_wrongstore")).path("code").asInt()).isEqualTo(403);
+        assertThat(noticeRecipients.recipients(other)).isEmpty();
+        data(call("PUT","/api/staff/2/status?status=0",admin,1L,null));
+        assertThat(noticeRecipients.recipients(1L)).isEmpty();
+        data(call("PUT","/api/staff/2/status?status=1",admin,1L,null));
+        assertThat(noticeRecipients.recipients(1L)).containsExactly("UID_cashier");
+        data(call("PUT","/api/staff/2/wxpusher",admin,1L,Map.of("uid","")));
+        assertThat(noticeRecipients.recipients(1L)).isEmpty();
+    }
+
+    @Test void wxpusherRecipientsRequireCurrentMembershipAndDeduplicateUid() throws Exception {
+        String admin=login(); long other=branch(admin);
+        jdbc.update("INSERT INTO t_staff_wxpusher(store_id,staff_id,uid) VALUES(?,2,'UID_cashier')",other);
+        assertThat(noticeRecipients.recipients(other)).isEmpty();
+        jdbc.update("INSERT INTO t_staff_store(staff_id,store_id) VALUES(2,?)",other);
+        assertThat(noticeRecipients.recipients(other)).containsExactly("UID_cashier");
+        jdbc.update("DELETE FROM t_staff_store WHERE staff_id=2 AND store_id=?",other);
+        assertThat(noticeRecipients.recipients(other)).isEmpty();
+        jdbc.update("INSERT INTO t_staff_wxpusher(store_id,staff_id,uid) VALUES(1,1,'UID_shared'),(1,2,'UID_shared')");
+        assertThat(noticeRecipients.recipients(1L)).containsExactly("UID_shared");
+    }
     JsonNode call(String method,String path,String token,Long store,Object body) throws Exception {
         var request=MockMvcRequestBuilders.request(org.springframework.http.HttpMethod.valueOf(method),path).contentType(MediaType.APPLICATION_JSON);
         if(token!=null)request.header("Authorization","Bearer "+token);

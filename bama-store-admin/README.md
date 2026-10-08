@@ -13,7 +13,7 @@
 1. 安装 JDK 17、Maven 3.8+、MySQL 8。
 2. 创建数据库（表结构和初始化数据由程序启动时自动执行）：
    ```sql
-   CREATE DATABASE bama_store DEFAULT CHARACTER SET utf8mb4;
+   CREATE DATABASE bama DEFAULT CHARACTER SET utf8mb4;
    ```
 3. 配置数据库账号密码（**不要直接改 `application.yml`，该文件已脱敏并会提交到 Git**）：
    ```bash
@@ -24,6 +24,8 @@
    `application-local.yml` 已在 `.gitignore` 中忽略，仅存在于本地，不会被提交。
 
 ## 三、启动
+正式环境的固定管理员工号为 `BM-ADMIN`。首次创建时通过私有配置 `bama.bootstrap.phone` / `bama.bootstrap.password`（或环境变量 `BAMA_ADMIN_PHONE` / `BAMA_ADMIN_PASSWORD`）指定登录手机号和初始密码；真实凭据不得提交到 Git。初始化会补齐总部管理权限，不生成演示会员、门店或收银员。已有管理员保留密码、姓名、状态及所属门店，不会把同手机号的普通员工自动提升为管理员。首次创建营业门店时，尚未分配门店的默认管理员会自动关联该门店。H2 演示环境仍使用演示账号。
+
 ```bash
 # 使用本地配置档启动（推荐，读取 application-local.yml 中的真实数据库）
 mvn spring-boot:run -Dspring-boot.run.profiles=local
@@ -37,6 +39,7 @@ mvn spring-boot:run -Dspring-boot.run.profiles=h2
 ```
 > 若不加 `--spring.profiles.active=local`，将使用 `application.yml` 中的默认占位值
 > （`localhost:3306`、空密码），通常无法连接测试库。
+> MySQL 数据库统一使用 `bama`，通过环境变量启动时设置 `DB_NAME=bama`。
 > 也可改用环境变量注入：`DB_HOST` / `DB_PORT` / `DB_NAME` / `DB_USER` / `DB_PASSWORD` / `JWT_SECRET`。
 启动成功后：
 - 服务地址：`http://localhost:8080`

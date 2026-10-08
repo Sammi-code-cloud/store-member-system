@@ -20,6 +20,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @SpringBootTest(properties = {"logging.level.root=WARN", "logging.level.com.bama.store=WARN", "mybatis-plus.configuration.log-impl=org.apache.ibatis.logging.nologging.NoLoggingImpl"})
 @ActiveProfiles("h2")
 @AutoConfigureMockMvc(print = org.springframework.boot.test.autoconfigure.web.servlet.MockMvcPrint.NONE)
+@org.springframework.test.context.jdbc.Sql(statements = "UPDATE t_business_dictionary SET dict_value='1' WHERE dict_key='business_enabled'")
 class AdminIntegrationTest {
     @Autowired MockMvc mvc;
     @Autowired ObjectMapper json;

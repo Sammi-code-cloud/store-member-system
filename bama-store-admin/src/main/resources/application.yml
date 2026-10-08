@@ -38,7 +38,18 @@ mybatis-plus:
 
 # JWT 配置
 bama:
+  wxpusher:
+    enabled: ${WXPUSHER_ENABLED:false}
+    app-token: ${WXPUSHER_APP_TOKEN:}
+    poll-ms: 5000
+    # Staff UIDs are configured in the admin staff page, separately for each store.
+  bootstrap:
+    phone: ${BAMA_ADMIN_PHONE:}
+    password: ${BAMA_ADMIN_PASSWORD:}
   sms:
+    wallet-notice:
+      # 充值、扣费短信已停用；登录验证码使用下方独立配置。
+      enabled: false
     enabled: ${SMS_ENABLED:false}
     access-key-id: ${SMS_ACCESS_KEY_ID:}
     access-key-secret: ${SMS_ACCESS_KEY_SECRET:}
@@ -55,6 +66,10 @@ bama:
     header: Authorization
     prefix: "Bearer "
   wechat:
+    booking-notice:
+      enabled: ${WECHAT_BOOKING_NOTICE_ENABLED:false}
+      template-id: ${WECHAT_BOOKING_TEMPLATE_ID:}
+      state: formal
     mini-code-environment: ${WECHAT_MINI_CODE_ENV:release}
     mini-app-id: ${WECHAT_MINI_APP_ID:}
     mini-secret: ${WECHAT_MINI_SECRET:}

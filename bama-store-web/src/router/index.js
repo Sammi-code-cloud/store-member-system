@@ -21,6 +21,7 @@ const routes = [
       { path: 'reports', component: () => import('@/views/reports.vue'), meta: { title: '经营统计', icon: 'TrendCharts', perm: 'dashboard:view', group: '门店运营' } },
       { path: 'transactions', component: () => import('@/views/records.vue'), meta: { title: '资金流水', icon: 'Tickets', perm: 'account:view', group: '门店运营' } },
       { path: 'audit', component: () => import('@/views/records.vue'), meta: { title: '操作记录', icon: 'Document', perm: 'audit:view', group: '系统设置' } },
+      { path: 'business-dictionary', component: () => import('@/views/business-dictionary.vue'), meta: { title: '业务字典', icon: 'Setting', perm: 'store:all', group: '系统设置' } },
       { path: 'recharge', component: () => import('@/views/recharge.vue'),
         meta: { title: '代客储值', icon: 'Wallet', perm: 'account:recharge', group: '门店运营' } },
       { path: 'reservation', component: () => import('@/views/reservation.vue'),

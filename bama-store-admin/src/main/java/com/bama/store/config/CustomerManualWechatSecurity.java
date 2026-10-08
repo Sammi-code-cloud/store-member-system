@@ -13,11 +13,11 @@ import org.springframework.security.web.SecurityFilterChain;
 public class CustomerManualWechatSecurity {
     @Bean @Order(0)
     public SecurityFilterChain customerManualWechatChain(HttpSecurity http, SecurityConfig existing) throws Exception {
-        return http.securityMatcher("/api/wechat/customer/manual-login","/api/wechat/customer/member-bind")
+        return http.securityMatcher("/api/wechat/customer/manual-login","/api/wechat/customer/member-bind","/api/wechat/customer/sms","/api/wechat/customer/bind")
                 .csrf(c -> c.disable())
                 .cors(c -> c.configurationSource(existing.corsConfigurationSource()))
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authorizeHttpRequests(a -> a.requestMatchers(HttpMethod.POST,"/api/wechat/customer/manual-login","/api/wechat/customer/member-bind").permitAll().anyRequest().denyAll())
+                .authorizeHttpRequests(a -> a.requestMatchers(HttpMethod.POST,"/api/wechat/customer/manual-login","/api/wechat/customer/member-bind","/api/wechat/customer/sms","/api/wechat/customer/bind").permitAll().anyRequest().denyAll())
                 .build();
     }
 }

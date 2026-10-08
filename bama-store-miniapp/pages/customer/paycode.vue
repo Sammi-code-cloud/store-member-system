@@ -15,12 +15,15 @@
     </view>
     <view class="balance-bar"><text>会员卡可用余额</text><text class="balance mono">¥{{ Number(member.balance || 0).toFixed(2) }}</text></view>
     <button class="refresh" :disabled="loading" @tap="refresh">{{loading ? '更新中…' : '刷新付款码'}}</button>
+    <WalletNoticeSubscribe />
   </view>
 </template>
 <script>
 import api from '@/common/api.js'
 import { paymentQrRows } from '@/common/payment-qr.js'
+import WalletNoticeSubscribe from '@/components/WalletNoticeSubscribe.vue'
 export default {
+  components: { WalletNoticeSubscribe },
   data() { return {member:{},payCode:'',qrRows:[],loading:false,countdown:60,timer:null,active:false,requestId:0} },
   onShow() {
     if (!uni.getStorageSync('customer_token')) { uni.redirectTo({url:'/pages/customer/login'}); return }

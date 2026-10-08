@@ -12,20 +12,23 @@
       <text class="store-name">{{ store.name }}</text>
       <text v-if="store.address" class="hint">{{ store.address }}</text>
       <text class="hint">登录后可预订茶室、查看订单和会员账户。</text>
-      <text class="privacy">手动填写手机号后使用微信登录，首次登录自动注册会员。</text>
-      <button class="wechat" :disabled="busy" :loading="busy" @tap="login">填写手机号并微信登录</button>
+      <text class="privacy">首次绑定需填写手机号并验证短信；已绑定的会员可直接登录。</text>
+      <PrivacyConsent ref="privacyConsent" @change="privacyFormAllowed=$event" :member="true" />
+      <button class="wechat" :disabled="busy" :loading="busy" @tap="login">手机号快捷登录</button>
       <text v-if="loginError" class="error">{{ loginError }}</text>
     </view>
   </view>
 </template>
 <script>
+import PrivacyConsent from '@/components/PrivacyConsent.vue'
 import api from '@/common/api.js'
 import { auth } from '@/common/store.js'
 import { wechatLogin } from '@/common/wechat.js'
 import { completeCustomerWechat } from '@/common/customer-wechat.js'
 import { parseStoreScene } from '@/common/scan-entry.mjs'
 export default {
-  data() { return { scene: '', store: {}, loading: true, busy: false, error: '', loginError: '', loadVersion: 0 } },
+  components: { PrivacyConsent },
+  data() { return{privacyFormAllowed:false, scene: '', store: {}, loading: true, busy: false, error: '', loginError: '', loadVersion: 0 } },
   onLoad(options) { uni.setStorageSync('pending_store_scene', { scene: options?.scene || '' }) },
   onShow() {
     const pending = uni.getStorageSync('pending_store_scene')
@@ -59,11 +62,13 @@ export default {
     },
     async login() {
       if (this.busy || this.loading || this.error) return
-      this.busy = true; this.loginError = ''
+      this.busy = true
+      if (!await this.$refs.privacyConsent.ensure()) { this.busy=false; return }
+       this.loginError = ''
       try {
         const result = await wechatLogin('CUSTOMER')
         if (completeCustomerWechat(result)) this.home()
-      } catch(e) { this.loginError = e.message || '微信登录未完成，请重试或使用账号登录' }
+      } catch(e) { this.loginError = e.message || '登录未完成，请重试' }
       finally { this.busy = false }
     },
     home() { uni.setStorageSync('app_identity', 'customer'); uni.reLaunch({ url: '/pages/customer/home' }) },
@@ -72,5 +77,5 @@ export default {
 }
 </script>
 <style scoped>
-.scan-page{min-height:100vh;background:#fff7ef;padding:100rpx 40rpx;color:#422b24}.seal{width:100rpx;height:100rpx;border-radius:24rpx;background:#b5362d;color:#fff;font-size:52rpx;display:flex;align-items:center;justify-content:center;margin:0 auto 28rpx}.title{display:block;text-align:center;font-size:44rpx;font-weight:600}.entry-card{margin-top:40rpx;background:#fffdfa;border:1rpx solid #ecdfd2;border-radius:28rpx;padding:40rpx 32rpx}.store-name{display:block;font-size:34rpx;font-weight:600;margin-bottom:18rpx}.hint,.privacy,.error{display:block;font-size:26rpx;line-height:1.8;margin:20rpx 0;color:#807366}.privacy{font-size:23rpx;background:#f8f0e5;padding:20rpx;border-radius:14rpx}.error{color:#b5362d}.entry-card button{font-size:28rpx;line-height:92rpx;border-radius:16rpx;margin-top:24rpx}.wechat{background:#368352;color:#fff}.secondary{background:transparent;color:#80644c}
+.scan-page{min-height:100vh;background:#fff7ef;padding:100rpx 40rpx;color:#422b24}.seal{width:100rpx;height:100rpx;border-radius:24rpx;background:#b5362d;color:#fff;font-size:52rpx;display:flex;align-items:center;justify-content:center;margin:0 auto 28rpx}.title{display:block;text-align:center;font-size:44rpx;font-weight:600}.entry-card{margin-top:40rpx;background:#fffdfa;border:1rpx solid #ecdfd2;border-radius:28rpx;padding:40rpx 32rpx}.store-name{display:block;font-size:34rpx;font-weight:600;margin-bottom:18rpx}.hint,.privacy,.error{display:block;font-size:26rpx;line-height:1.8;margin:20rpx 0;color:#807366}.privacy{font-size:23rpx;background:#f8f0e5;padding:20rpx;border-radius:14rpx}.error{color:#b5362d}.entry-card button{font-size:28rpx;line-height:92rpx;border-radius:16rpx;margin-top:24rpx}.wechat{background:#b5362d;color:#fff}.secondary{background:transparent;color:#80644c}
 </style>

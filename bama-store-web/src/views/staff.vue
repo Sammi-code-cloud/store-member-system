@@ -29,12 +29,16 @@
                      @change="v => onToggle(row, v)" />
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="270" fixed="right">
+      <el-table-column label="预约通知" width="120">
+        <template #default="{ row }"><el-tag :type="row.wxpusherUid && row.status === 1 ? 'success' : 'info'" size="small">{{ row.wxpusherUid ? (row.status === 1 ? '已配置' : '已暂停') : '未配置' }}</el-tag></template>
+      </el-table-column>
+      <el-table-column label="操作" width="350" fixed="right">
         <template #default="{ row }">
           <el-button link type="primary" :disabled="!userStore.has('staff:manage')" @click="openDialog(row)">编辑</el-button>
           <el-button link type="primary" :disabled="!userStore.has('staff:manage')"
                      @click="onResetPassword(row)">重置密码</el-button>
           <el-button link type="primary" :disabled="!userStore.has('staff:manage') || row.status !== 1" @click="openBindCode(row)">绑定微信</el-button>
+          <el-button link type="primary" :disabled="!userStore.has('staff:manage')" @click="openNotice(row)">预约通知</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -42,6 +46,17 @@
     <el-pagination style="margin-top:12px" layout="total, prev, pager, next"
                    :total="total" :page-size="pageSize" :current-page="pageNum"
                    @current-change="onPageChange" />
+
+    <el-dialog v-model="noticeVisible" title="预约通知" width="500px" :close-on-click-modal="false">
+      <p>{{ noticeStaff.name }} · {{ userStore.stores.find(s => s.id === userStore.storeId)?.name || '当前门店' }}</p>
+      <el-form label-position="top">
+        <el-form-item label="WxPusher UID">
+          <el-input v-model="noticeUid" placeholder="UID_ 开头，清空可关闭通知" maxlength="104" clearable :disabled="noticeSaving" />
+        </el-form-item>
+      </el-form>
+      <p class="scope-tip">员工关注 WxPusher 应用后，将其 UID 填入此处。保存后接收当前门店的新预约通知；其他门店需分别配置。停用员工后自动暂停发送。</p>
+      <template #footer><el-button @click="noticeVisible = false" :disabled="noticeSaving">取消</el-button><el-button type="primary" :loading="noticeSaving" @click="saveNotice">保存</el-button></template>
+    </el-dialog>
 
     <!-- 新增员工 -->
     <el-dialog v-model="dialog" :title="form.id ? '编辑员工' : '新增员工'" width="520px">
@@ -119,6 +134,24 @@ const dialog = ref(false)
 const permDrawer = ref(false)
 const roles = ref([])
 const permissions = ref([])
+const noticeVisible = ref(false), noticeSaving = ref(false), noticeUid = ref(''), noticeStaff = ref({})
+function openNotice(row) {
+  noticeStaff.value = { id: row.id, name: row.name, storeId: userStore.storeId }
+  noticeUid.value = row.wxpusherUid || ''
+  noticeVisible.value = true
+}
+async function saveNotice() {
+  if (noticeStaff.value.storeId !== userStore.storeId) return ElMessage.warning('门店已切换，请重新打开预约通知设置')
+  const uid = noticeUid.value.trim()
+  if (uid && !/^UID_[A-Za-z0-9_-]{1,100}$/.test(uid)) return ElMessage.warning('请填写正确的 UID（UID_ 开头）')
+  noticeSaving.value = true
+  try {
+    await api.staffWxpusher(noticeStaff.value.id, uid)
+    noticeVisible.value = false
+    ElMessage.success(uid ? '当前门店预约通知已配置' : '当前门店预约通知已关闭')
+    await load()
+  } finally { noticeSaving.value = false }
+}
 const bindVisible = ref(false), bindLoading = ref(false), bindImage = ref(''), bindError = ref(''), bindStaff = ref({})
 let bindRequest = 0
 async function openBindCode(row) {

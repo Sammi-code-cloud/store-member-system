@@ -22,5 +22,8 @@
 - [部署说明](deployment/部署说明.md)
 - [MySQL 连接](deployment/阿里云MySQL-连接说明.md)
 - [微信接入](integrations/微信登录-接入说明.md)
+- [房间预约员工通知（WxPusher）](integrations/WxPusher.md)
+- [会员预约成功微信订阅通知](integrations/预约成功订阅通知.md)
+- [会员充值与消费短信](integrations/会员交易短信.md)
 
 部分早期说明记录的是当时的功能设计，当前实现以代码为准。禁止将真实密码、会员数据、微信密钥或服务器地址写入公开文档。

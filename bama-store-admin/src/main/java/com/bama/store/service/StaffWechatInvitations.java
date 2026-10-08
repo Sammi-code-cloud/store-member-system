@@ -18,9 +18,12 @@ public class StaffWechatInvitations {
     private final WechatAccounts accounts;
     private final WechatClient wechat;
     private final StaffWechatMembership membership;
+    private final BusinessDictionary businessDictionary;
+
 
     @Transactional
     public String create(Long staffId) {
+        businessDictionary.requireEnabled();
         requireStaff(staffId);
         if (jdbc.queryForObject("SELECT COUNT(*) FROM t_wechat_account WHERE audience='STAFF' AND account_id=?", Integer.class, staffId) > 0)
             throw new BusinessException("该员工已绑定微信，可直接微信登录；如需换绑请先核实原绑定");
@@ -34,6 +37,7 @@ public class StaffWechatInvitations {
 
     @Transactional
     public Map<String,Object> bind(String ticket,String phone,String code) {
+        businessDictionary.requireEnabled();
         if(ticket==null || !ticket.matches("[A-Za-z0-9_-]{22}"))throw new BusinessException("员工绑定码无效，请重新扫码");
         if(phone==null || !phone.matches("1[3-9]\\d{9}"))throw new BusinessException("请填写员工手机号");
         var rows=jdbc.queryForList("SELECT payload FROM t_wechat_flow WHERE token_hash=? AND kind='STAFF_QR' AND expires_at>?",WechatFlows.hash(ticket),Timestamp.from(Instant.now()));

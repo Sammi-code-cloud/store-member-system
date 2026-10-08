@@ -1,4 +1,5 @@
 <script>
+import { hasPrivacyConsent, clearPrivateSessions } from './common/privacy-consent.mjs'
 import { rememberScan } from './common/scan-entry.mjs'
 import { parseStaffScene } from './common/staff-bind.mjs'
 export default {
@@ -9,7 +10,9 @@ export default {
     if (['pages/staff/login','pages/staff/bind-wechat'].includes(options?.path) && parseStaffScene(options.query?.scene)) uni.setStorageSync('pending_staff_scene', {scene: options.query.scene})
   },
   onLaunch() {
-    console.log('八马门店小程序启动')
+    // Older builds had no consent record; never reuse those sessions silently.
+    if (!hasPrivacyConsent(uni)) clearPrivateSessions(uni)
+    else if (!hasPrivacyConsent(uni, true)) { uni.removeStorageSync('customer_token'); uni.removeStorageSync('customer_user') }
   }
 }
 </script>
@@ -28,6 +31,7 @@ view, text {
 }
 
 /* 通用工具类 */
+.share-entry{margin:24rpx 0;padding:20rpx 24rpx;background:#fff3e4;color:#9b3d2e;border:1rpx solid #eed5bd;border-radius:18rpx;font-size:25rpx;line-height:1.6;text-align:center}
 .flex { display: flex; align-items: center; }
 .flex-between { display: flex; align-items: center; justify-content: space-between; }
 .brand-bg { background: linear-gradient(135deg, #b5362d, #8e2825); }

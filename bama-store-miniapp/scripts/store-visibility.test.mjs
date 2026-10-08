@@ -17,6 +17,6 @@ test('returning to booking page refreshes stores and clears stale rooms when all
   assert.deepEqual(state.stores,[]);assert.deepEqual(state.rooms,[]);assert.equal(state.booking,null)
   assert.equal(storage.has('customer_store_id'),false)
   let refreshes=0
-  component.onShow.call({loadContact(){},initStores(){refreshes++}})
+  component.onShow.call({loadBookingNoticeSettings(){},loadContact(){},initStores(){refreshes++}})
   assert.equal(refreshes,1)
 })

@@ -1,17 +1,20 @@
 -- H2 版建表脚本（用于无 MySQL 的演示环境）
 
 CREATE TABLE IF NOT EXISTS t_store (
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time DATETIME DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    deleted INTEGER NOT NULL DEFAULT 0 COMMENT '删除标识',
     id          BIGINT AUTO_INCREMENT PRIMARY KEY,
     name        VARCHAR(64) NOT NULL,
     address     VARCHAR(255),
     phone       VARCHAR(20),
-    status      TINYINT NOT NULL DEFAULT 1,
-    create_time TIMESTAMP,
-    update_time TIMESTAMP,
-    deleted     TINYINT NOT NULL DEFAULT 0
+    status      TINYINT NOT NULL DEFAULT 1
 );
 
 CREATE TABLE IF NOT EXISTS t_staff (
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time DATETIME DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    deleted INTEGER NOT NULL DEFAULT 0 COMMENT '删除标识',
     id          BIGINT AUTO_INCREMENT PRIMARY KEY,
     staff_no    VARCHAR(32) NOT NULL,
     name        VARCHAR(32) NOT NULL,
@@ -19,36 +22,36 @@ CREATE TABLE IF NOT EXISTS t_staff (
     password    VARCHAR(100) NOT NULL,
     store_id    BIGINT,
     status      TINYINT NOT NULL DEFAULT 1,
-    create_time TIMESTAMP,
-    update_time TIMESTAMP,
-    deleted     TINYINT NOT NULL DEFAULT 0,
     CONSTRAINT uk_staff_phone UNIQUE (phone, deleted),
     CONSTRAINT uk_staff_no UNIQUE (staff_no, deleted)
 );
 
 CREATE TABLE IF NOT EXISTS t_role (
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time DATETIME DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    deleted INTEGER NOT NULL DEFAULT 0 COMMENT '删除标识',
     id          BIGINT AUTO_INCREMENT PRIMARY KEY,
     code        VARCHAR(32) NOT NULL,
     name        VARCHAR(32) NOT NULL,
     remark      VARCHAR(128),
-    create_time TIMESTAMP,
-    update_time TIMESTAMP,
-    deleted     TINYINT NOT NULL DEFAULT 0,
     CONSTRAINT uk_role_code UNIQUE (code, deleted)
 );
 
 CREATE TABLE IF NOT EXISTS t_permission (
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time DATETIME DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    deleted INTEGER NOT NULL DEFAULT 0 COMMENT '删除标识',
     id          BIGINT AUTO_INCREMENT PRIMARY KEY,
     code        VARCHAR(64) NOT NULL,
     name        VARCHAR(64) NOT NULL,
     module      VARCHAR(32),
-    create_time TIMESTAMP,
-    update_time TIMESTAMP,
-    deleted     TINYINT NOT NULL DEFAULT 0,
     CONSTRAINT uk_perm_code UNIQUE (code, deleted)
 );
 
 CREATE TABLE IF NOT EXISTS t_staff_role (
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time DATETIME DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    deleted INTEGER NOT NULL DEFAULT 0 COMMENT '删除标识',
     id       BIGINT AUTO_INCREMENT PRIMARY KEY,
     staff_id BIGINT NOT NULL,
     role_id  BIGINT NOT NULL,
@@ -56,6 +59,9 @@ CREATE TABLE IF NOT EXISTS t_staff_role (
 );
 
 CREATE TABLE IF NOT EXISTS t_role_permission (
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time DATETIME DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    deleted INTEGER NOT NULL DEFAULT 0 COMMENT '删除标识',
     id            BIGINT AUTO_INCREMENT PRIMARY KEY,
     role_id       BIGINT NOT NULL,
     permission_id BIGINT NOT NULL,
@@ -63,6 +69,9 @@ CREATE TABLE IF NOT EXISTS t_role_permission (
 );
 
 CREATE TABLE IF NOT EXISTS t_member (
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time DATETIME DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    deleted INTEGER NOT NULL DEFAULT 0 COMMENT '删除标识',
     id          BIGINT AUTO_INCREMENT PRIMARY KEY,
     member_no   VARCHAR(32) NOT NULL,
     name        VARCHAR(32),
@@ -72,26 +81,26 @@ CREATE TABLE IF NOT EXISTS t_member (
     discount    INT NOT NULL DEFAULT 100,
     points      INT NOT NULL DEFAULT 0,
     status      TINYINT NOT NULL DEFAULT 1,
-    create_time TIMESTAMP,
-    update_time TIMESTAMP,
-    deleted     TINYINT NOT NULL DEFAULT 0,
     CONSTRAINT uk_member_phone UNIQUE (phone, deleted)
 );
 
 CREATE TABLE IF NOT EXISTS t_member_account (
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time DATETIME DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    deleted INTEGER NOT NULL DEFAULT 0 COMMENT '删除标识',
     id             BIGINT AUTO_INCREMENT PRIMARY KEY,
     member_id      BIGINT NOT NULL,
     balance        DECIMAL(12,2) NOT NULL DEFAULT 0.00,
     total_recharge DECIMAL(12,2) NOT NULL DEFAULT 0.00,
     total_consume  DECIMAL(12,2) NOT NULL DEFAULT 0.00,
     version        INT NOT NULL DEFAULT 0,
-    create_time    TIMESTAMP,
-    update_time    TIMESTAMP,
-    deleted        TINYINT NOT NULL DEFAULT 0,
     CONSTRAINT uk_account_member UNIQUE (member_id, deleted)
 );
 
 CREATE TABLE IF NOT EXISTS t_wallet_txn (
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time DATETIME DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    deleted INTEGER NOT NULL DEFAULT 0 COMMENT '删除标识',
     id             BIGINT AUTO_INCREMENT PRIMARY KEY,
     member_id      BIGINT NOT NULL,
     biz_no         VARCHAR(64) NOT NULL,
@@ -103,14 +112,14 @@ CREATE TABLE IF NOT EXISTS t_wallet_txn (
     staff_id       BIGINT,
     store_id       BIGINT,
     remark         VARCHAR(128),
-    create_time    TIMESTAMP,
-    update_time    TIMESTAMP,
-    deleted        TINYINT NOT NULL DEFAULT 0,
     CONSTRAINT uk_txn_bizno UNIQUE (biz_no, deleted)
 );
 CREATE INDEX IF NOT EXISTS idx_txn_member ON t_wallet_txn(member_id);
 
 CREATE TABLE IF NOT EXISTS t_tea_room (
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time DATETIME DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    deleted INTEGER NOT NULL DEFAULT 0 COMMENT '删除标识',
     id          BIGINT AUTO_INCREMENT PRIMARY KEY,
     name        VARCHAR(64) NOT NULL,
     room_type   VARCHAR(32),
@@ -118,13 +127,13 @@ CREATE TABLE IF NOT EXISTS t_tea_room (
     price_hour  DECIMAL(10,2) NOT NULL DEFAULT 0.00,
     image       VARCHAR(255),
     store_id    BIGINT,
-    status      TINYINT NOT NULL DEFAULT 1,
-    create_time TIMESTAMP,
-    update_time TIMESTAMP,
-    deleted     TINYINT NOT NULL DEFAULT 0
+    status      TINYINT NOT NULL DEFAULT 1
 );
 
 CREATE TABLE IF NOT EXISTS t_reservation (
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time DATETIME DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    deleted INTEGER NOT NULL DEFAULT 0 COMMENT '删除标识',
     id              BIGINT AUTO_INCREMENT PRIMARY KEY,
     order_no        VARCHAR(32) NOT NULL,
     member_id       BIGINT NOT NULL,
@@ -136,15 +145,15 @@ CREATE TABLE IF NOT EXISTS t_reservation (
     status          VARCHAR(16) NOT NULL DEFAULT 'WAITING',
     verify_staff_id BIGINT,
     store_id        BIGINT,
-    create_time     TIMESTAMP,
-    update_time     TIMESTAMP,
-    deleted         TINYINT NOT NULL DEFAULT 0,
     CONSTRAINT uk_reservation_no UNIQUE (order_no, deleted),
     CONSTRAINT uk_room_slot UNIQUE (room_id, reserve_date, start_time, deleted)
 );
 CREATE INDEX IF NOT EXISTS idx_reservation_member ON t_reservation(member_id);
 
 CREATE TABLE IF NOT EXISTS t_product (
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time DATETIME DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    deleted INTEGER NOT NULL DEFAULT 0 COMMENT '删除标识',
     id           BIGINT AUTO_INCREMENT PRIMARY KEY,
     name         VARCHAR(128) NOT NULL,
     barcode      VARCHAR(64),
@@ -158,13 +167,13 @@ CREATE TABLE IF NOT EXISTS t_product (
     image        VARCHAR(255),
     status       TINYINT NOT NULL DEFAULT 1,
     store_id     BIGINT,
-    create_time  TIMESTAMP,
-    update_time  TIMESTAMP,
-    deleted      TINYINT NOT NULL DEFAULT 0,
     CONSTRAINT uk_product_barcode UNIQUE (barcode, deleted)
 );
 
 CREATE TABLE IF NOT EXISTS t_consume_order (
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time DATETIME DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    deleted INTEGER NOT NULL DEFAULT 0 COMMENT '删除标识',
     id            BIGINT AUTO_INCREMENT PRIMARY KEY,
     order_no      VARCHAR(32) NOT NULL,
     member_id     BIGINT NOT NULL,
@@ -175,14 +184,14 @@ CREATE TABLE IF NOT EXISTS t_consume_order (
     pay_type      VARCHAR(16) NOT NULL DEFAULT 'MEMBER_CARD',
     status        VARCHAR(16) NOT NULL DEFAULT 'PAID',
     remark        VARCHAR(128),
-    create_time   TIMESTAMP,
-    update_time   TIMESTAMP,
-    deleted       TINYINT NOT NULL DEFAULT 0,
     CONSTRAINT uk_consume_no UNIQUE (order_no, deleted)
 );
 CREATE INDEX IF NOT EXISTS idx_consume_member ON t_consume_order(member_id);
 
 CREATE TABLE IF NOT EXISTS t_consume_item (
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time DATETIME DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    deleted INTEGER NOT NULL DEFAULT 0 COMMENT '删除标识',
     id        BIGINT AUTO_INCREMENT PRIMARY KEY,
     order_id  BIGINT NOT NULL,
     item_type VARCHAR(16) NOT NULL,
@@ -195,8 +204,10 @@ CREATE INDEX IF NOT EXISTS idx_item_order ON t_consume_item(order_id);
 
 -- 扣款幂等记录，不随资金流水归档删除
 CREATE TABLE IF NOT EXISTS t_charge_request (
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time DATETIME DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    deleted INTEGER NOT NULL DEFAULT 0 COMMENT '删除标识',
     biz_no VARCHAR(64) PRIMARY KEY,
     request_hash VARCHAR(64) NOT NULL,
-    result_json TEXT,
-    create_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    result_json TEXT
 );

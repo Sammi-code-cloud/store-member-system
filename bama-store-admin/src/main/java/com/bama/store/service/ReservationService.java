@@ -25,6 +25,9 @@ public class ReservationService {
     private final StoreAvailability storeAvailability;
     private final TeaRoomService roomService;
     private final AuditService audit;
+    private final ReservationNotices notices;
+    private final BookingNotices bookingNotices;
+    private final BusinessDictionary businessDictionary;
 
     public Page<Reservation> page(long pageNum, long pageSize, String status) {
         return page(pageNum, pageSize, status, null, null, null, null);
@@ -66,6 +69,7 @@ public class ReservationService {
 
     @Transactional(isolation = org.springframework.transaction.annotation.Isolation.READ_COMMITTED)
     public String create(Reservation input) {
+        businessDictionary.requireEnabled();
         TeaRoom room = roomService.lock(input.getRoomId());
         var auth = SecurityContextHolder.getContext().getAuthentication();
         boolean staff = auth != null && auth.getPrincipal() instanceof LoginStaff;
@@ -87,6 +91,7 @@ public class ReservationService {
         r.setContactName(contactName);
         r.setContactPhone(contactPhone); r.setGuests(input.getGuests() == null ? 1 : input.getGuests()); r.setRemark(input.getRemark() == null ? null : input.getRemark().trim()); r.setSource(staff ? "STAFF" : "CUSTOMER");
         reservations.insert(r); audit.record("创建预约", r.getOrderNo(), room.getName() + " " + r.getReserveDate() + " " + r.getStartTime(), r.getStoreId());
+        if (!staff) notices.enqueue(r);
         return r.getOrderNo();
     }
 
@@ -103,16 +108,19 @@ public class ReservationService {
 
     @Transactional(isolation = org.springframework.transaction.annotation.Isolation.READ_COMMITTED)
     public void confirm(Long id) {
+        businessDictionary.requireEnabled();
         SecurityUtil.current();
         Reservation r = locked(id);
         if (!"PENDING".equals(r.getStatus())) throw new BusinessException("只有待确认申请可以确认");
         checkAvailability(rooms.selectById(r.getRoomId()), r.getReserveDate(), r.getStartTime(), r.getHours(), id);
         r.setStatus("WAITING"); reservations.updateById(r);
+        bookingNotices.confirmed(r);
         audit.record("确认预约", r.getOrderNo(), "待店员确认 → 预约成功，待到店");
     }
 
     @Transactional(isolation = org.springframework.transaction.annotation.Isolation.READ_COMMITTED)
     public void reject(Long id, String reason) {
+        businessDictionary.requireEnabled();
         SecurityUtil.current();
         Reservation r = locked(id);
         if (!"PENDING".equals(r.getStatus())) throw new BusinessException("只有待确认申请可以拒绝");
@@ -123,6 +131,7 @@ public class ReservationService {
 
     @Transactional(isolation = org.springframework.transaction.annotation.Isolation.READ_COMMITTED)
     public void verify(Long id, Long staffId) {
+        businessDictionary.requireEnabled();
         Reservation r = locked(id);
         if (!"WAITING".equals(r.getStatus())) throw new BusinessException("只有待到店预约可以核销");
         if (!BookingRules.today().equals(r.getReserveDate())) throw new BusinessException("请在预约当天办理到店核销");
@@ -132,6 +141,7 @@ public class ReservationService {
 
     @Transactional(isolation = org.springframework.transaction.annotation.Isolation.READ_COMMITTED)
     public void complete(Long id) {
+        businessDictionary.requireEnabled();
         Reservation r = locked(id);
         if (!"USING".equals(r.getStatus())) throw new BusinessException("只有使用中的预约可以完成");
         r.setStatus("VERIFIED"); reservations.updateById(r); audit.record("完成预约", r.getOrderNo(), "使用中 → 已完成（不代表已付款）");
@@ -139,6 +149,7 @@ public class ReservationService {
 
     @Transactional(isolation = org.springframework.transaction.annotation.Isolation.READ_COMMITTED)
     public void cancel(Long id, String reason) {
+        businessDictionary.requireEnabled();
         Reservation r = locked(id);
         if (!Set.of("PENDING", "WAITING").contains(r.getStatus())) throw new BusinessException("只有待确认或待到店预约可以取消");
         if (reason == null || reason.isBlank() || reason.length() > 255) throw new BusinessException("请填写取消原因（最多255字）");
@@ -147,6 +158,7 @@ public class ReservationService {
 
     @Transactional(isolation = org.springframework.transaction.annotation.Isolation.READ_COMMITTED)
     public void reschedule(Long id, LocalDate date, String time) {
+        businessDictionary.requireEnabled();
         Reservation r = locked(id);
         if (!"WAITING".equals(r.getStatus())) throw new BusinessException("只有待到店预约可以改期");
         checkAvailability(rooms.selectById(r.getRoomId()), date, time, r.getHours(), id);

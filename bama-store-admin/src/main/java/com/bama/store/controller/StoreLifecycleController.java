@@ -12,12 +12,14 @@ import org.springframework.web.bind.annotation.*;
 @RestController @RequestMapping("/api/store") @RequiredArgsConstructor
 @PreAuthorize("hasAuthority('store:all')")
 public class StoreLifecycleController {
+    private final com.bama.store.service.BusinessDictionary businessDictionary;
     private final JdbcTemplate jdbc;
     private final AuditService audit;
     public record StatusRequest(Integer status) {}
 
     @PutMapping("/{id}/status") @Transactional
     public Result<Void> status(@PathVariable Long id, @RequestBody StatusRequest body) {
+        businessDictionary.requireEnabled();
         if (body.status() == null || body.status() != 0 && body.status() != 1)
             throw new BusinessException("营业状态无效");
         var rows = jdbc.queryForList("SELECT name,status FROM t_store WHERE id=? AND deleted=0 FOR UPDATE", id);
@@ -30,6 +32,7 @@ public class StoreLifecycleController {
 
     @DeleteMapping("/{id}") @Transactional(isolation = org.springframework.transaction.annotation.Isolation.SERIALIZABLE)
     public Result<Void> delete(@PathVariable Long id) {
+        businessDictionary.requireEnabled();
         var stores = jdbc.queryForList("SELECT id,name,status FROM t_store WHERE deleted=0 ORDER BY id FOR UPDATE");
         var store = stores.stream().filter(s -> ((Number) s.get("id")).longValue() == id).findFirst()
                 .orElseThrow(() -> new BusinessException("门店不存在或已删除"));

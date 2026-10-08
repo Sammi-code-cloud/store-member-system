@@ -1,3 +1,4 @@
+import { evaluateSource } from './privacy-test-runtime.mjs'
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
@@ -13,7 +14,7 @@ function fixture({enabled=true,expired=false,failSend=false,failBind=false}={}) 
     return {account:{token:'verified-token',memberId:9}}
   }
   const pending=()=>({ticket:'ticket',smsEnabled:enabled,expiresAt:Date.now()+(expired?-1:300000)})
-  const component=new Function('uni','request','auth','pendingCustomerBinding','clearCustomerBinding','wechatLogin','completeCustomerWechat',source)(uni,request,{setCustomerLogin:r=>logins.push(r)},pending,()=>{},async()=>({}),()=>false)
+  const component=evaluateSource('uni','request','auth','pendingCustomerBinding','clearCustomerBinding','wechatLogin','completeCustomerWechat',source)(uni,request,{setCustomerLogin:r=>logins.push(r)},pending,()=>{},async()=>({}),()=>false)
   const vm=component.data()
   for(const [name,method] of Object.entries(component.methods))vm[name]=method.bind(vm)
   for(const [name,get] of Object.entries(component.computed))Object.defineProperty(vm,name,{get:get.bind(vm)})

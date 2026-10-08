@@ -10,7 +10,7 @@ import java.util.*;
 public class BannerDefaults implements ApplicationRunner {
     private final JdbcTemplate jdbc;
     @Transactional public void run(ApplicationArguments args) throws Exception {
-        jdbc.execute("CREATE TABLE IF NOT EXISTS t_banner_initialized(store_id BIGINT PRIMARY KEY)");
+        jdbc.execute("CREATE TABLE IF NOT EXISTS t_banner_initialized(store_id BIGINT PRIMARY KEY, " + AuditColumns.definition(jdbc) + ")");
         try(var stream=getClass().getResourceAsStream("/banners/tea-welcome.png")) {
             if(stream==null)return;
             String image="data:image/png;base64,"+Base64.getEncoder().encodeToString(stream.readAllBytes());

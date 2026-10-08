@@ -3,9 +3,10 @@ import assert from 'node:assert/strict'
 import {readFileSync} from 'node:fs'
 const source=readFileSync(new URL('../pages/customer/rooms.vue',import.meta.url),'utf8').match(/<script>([\s\S]*?)<\/script>/)[1].replace(/^import .*$/gm,'').replace('export default','return')
 function setup(reserve){
- const component=new Function('api','CustomerNav',source)({customerReserve:reserve},{})
+ const component=new Function('api','CustomerNav','requestBookingNotice',source)({customerReserve:reserve},{},async()=>false)
  const vm=component.data()
  for(const [name,method] of Object.entries(component.methods))vm[name]=method.bind(vm)
+ vm.bookingPrivacyAccepted=true
  vm.booking={roomId:1,roomName:'测试包间',storeName:'测试分店',date:'2026-09-08',time:'14:00',end:'15:00',hours:1,amount:'100'}
  vm.contact={name:' 测试联系人 ',phone:13800000000,guests:2,remark:' 测试 '}
  vm.loadSlots=()=>{}

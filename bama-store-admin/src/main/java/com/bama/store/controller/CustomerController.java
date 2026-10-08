@@ -94,7 +94,7 @@ public class CustomerController {
                 new LambdaQueryWrapper<WalletTxn>()
                         .eq(WalletTxn::getMemberId, memberId)
                         .orderByDesc(WalletTxn::getId)
-                        .last("limit 10"));
+                        .last("limit 20"));
         return Result.success(list);
     }
 

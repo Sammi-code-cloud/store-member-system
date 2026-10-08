@@ -16,6 +16,7 @@ import java.util.*;
 @RestController
 @RequiredArgsConstructor
 public class BannerController {
+    private final com.bama.store.service.BusinessDictionary businessDictionary;
     private final JdbcTemplate jdbc;
     private final AuditService audit;
     private final com.bama.store.service.BannerImages optimizer;
@@ -52,6 +53,7 @@ public class BannerController {
     }
     @PostMapping("/api/banners") @PreAuthorize("hasAuthority('store:manage')") @Transactional
     public Result<?> save(@RequestBody Input body) {
+        businessDictionary.requireEnabled();
         if(body.title()==null || body.title().isBlank() || body.title().length()>60)throw new BusinessException("标题为1–60字");
         if(body.status()==null || body.status()!=0 && body.status()!=1 || body.sortOrder()==null || body.sortOrder()<0 || body.sortOrder()>999)throw new BusinessException("状态或排序不正确");
         if(!Set.of("none","rooms").contains(body.target()==null?"":body.target()))throw new BusinessException("跳转目标无效");
@@ -77,6 +79,7 @@ public class BannerController {
     }
     @DeleteMapping("/api/banners/{id}") @PreAuthorize("hasAuthority('store:manage')") @Transactional
     public Result<?> delete(@PathVariable Long id) {
+        businessDictionary.requireEnabled();
         var found=jdbc.queryForList("SELECT store_id FROM t_banner WHERE id=?",Long.class,id);
         if(found.isEmpty())throw new BusinessException("Banner不存在");
         SecurityUtil.ownStore(found.get(0));

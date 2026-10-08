@@ -29,6 +29,11 @@ public class WechatFlows {
   if(rows.size()!=1)throw new BusinessException("微信登录请求已过期或已使用，请重新发起");
   try{return json.readValue(rows.get(0).get("payload").toString(),new com.fasterxml.jackson.core.type.TypeReference<Map<String,String>>(){});}catch(Exception e){throw new IllegalStateException(e);}
  }
+ // Password-based staff binding keeps its original single-use ticket behavior even if authentication fails.
+ @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
+ public Map<String,String> consumeStaffBinding(String token) {
+  return consume(token,"BIND");
+ }
  @Transactional
  public Map<String,String> consume(String token,String kind) {
   if(token==null || token.length()!=43)throw new BusinessException("微信登录请求已过期，请重新发起");

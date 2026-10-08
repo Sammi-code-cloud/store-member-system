@@ -8,6 +8,7 @@ import java.util.*;
 @Service @RequiredArgsConstructor
 public class WechatAccounts {
  private final JdbcTemplate jdbc; private final CustomerAuthService customers; private final AuthService staff; private final WechatFlows flows; private final SmsSender sms;
+     private final BusinessDictionary businessDictionary;
  private List<String> keys(WechatClient.Identity i) {
   var keys=new ArrayList<String>();keys.add("APP:"+WechatFlows.hash(i.appId()+":"+i.openId()));
   if(i.unionId()!=null && !i.unionId().isBlank())keys.add("UNION:"+WechatFlows.hash(i.unionId()));return keys;
@@ -26,23 +27,26 @@ public class WechatAccounts {
  }
  @Transactional
  public Map<String,Object> login(WechatClient.Identity identity,String audience) {
+  boolean businessEnabled=businessDictionary.lockEnabled();
   Long id=find(identity,audience);
-  if("CUSTOMER".equals(audience) && (id==null || !phoneVerified(id))) {
-   if(id!=null) customers.requireActive(id);
+  if("CUSTOMER".equals(audience) && id==null) {
+   businessDictionary.requireEnabled();
    String ticket=flows.create("CUSTOMER_BIND",Map.of("app",identity.appId(),"openid",identity.openId(),"unionid",identity.unionId()==null?"":identity.unionId(),"audience",audience));
    return Map.of("bindRequired",true,"bindTicket",ticket,"audience",audience,"smsEnabled",sms.ready());
   }
   if("STAFF".equals(audience) && id==null) {
+   businessDictionary.requireEnabled();
    String ticket=flows.create("BIND",Map.of("app",identity.appId(),"openid",identity.openId(),"unionid",identity.unionId()==null?"":identity.unionId(),"audience",audience));
    return Map.of("bindRequired",true,"bindTicket",ticket,"audience",audience);
   }
   Object account;
   if("CUSTOMER".equals(audience)) {var customer=customers.wechatLogin(id); id=((Number)customer.get("memberId")).longValue();account=customer;}
   else account=staff.loginById(id);
-  link(identity,audience,id);return Map.of("bindRequired",false,"audience",audience,"account",account);
+  if(businessEnabled)link(identity,audience,id);return Map.of("bindRequired",false,"audience",audience,"account",account);
  }
  @Transactional
  public Map<String,Object> bind(WechatClient.Identity identity,Long id) {
+  businessDictionary.requireEnabled();
   link(identity,"STAFF",id);
   return Map.of("bindRequired",false,"audience","STAFF","account",staff.loginById(id));
  }
@@ -51,6 +55,7 @@ public class WechatAccounts {
  }
  @Transactional
  public Map<String,Object> bindCustomer(String token,String phone) {
+  businessDictionary.requireEnabled();
   jdbc.queryForList("SELECT id FROM t_sms_guard WHERE id=1 FOR UPDATE");
   var ticket=flows.consume(token,"CUSTOMER_BIND");
   var identity=new WechatClient.Identity(ticket.get("app"),ticket.get("openid"),ticket.get("unionid"));
@@ -73,7 +78,8 @@ public class WechatAccounts {
     throw new BusinessException("该会员已绑定其他微信，换绑请联系门店核实");
   } else target=customers.createWechatMember(phone);
   jdbc.update("UPDATE t_member SET phone=? WHERE id=? AND deleted=0",phone,target);
-  jdbc.update("INSERT INTO t_wechat_phone_verified(member_id,phone,verified_at) VALUES(?,?,CURRENT_TIMESTAMP)",target,phone);
+  if(jdbc.update("UPDATE t_wechat_phone_verified SET phone=?,verified_at=CURRENT_TIMESTAMP WHERE member_id=?",phone,target)==0)
+   jdbc.update("INSERT INTO t_wechat_phone_verified(member_id,phone,verified_at) VALUES(?,?,CURRENT_TIMESTAMP)",target,phone);
   link(identity,"CUSTOMER",target);
   return Map.of("bindRequired",false,"audience","CUSTOMER","account",customers.wechatLogin(target));
  }

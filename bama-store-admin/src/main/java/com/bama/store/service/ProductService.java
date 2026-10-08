@@ -17,6 +17,7 @@ import org.springframework.util.StringUtils;
 public class ProductService {
 
     private final ProductMapper productMapper;
+    private final BusinessDictionary businessDictionary;
 
     public Page<Product> page(long pageNum, long pageSize, String keyword) {
         LambdaQueryWrapper<Product> wrapper = new LambdaQueryWrapper<Product>().eq(Product::getStoreId, com.bama.store.security.SecurityUtil.storeId());
@@ -37,7 +38,9 @@ public class ProductService {
     }
 
     /** 录入或更新货品 */
+    @org.springframework.transaction.annotation.Transactional
     public Long save(Product product) {
+        businessDictionary.requireEnabled();
         if (product.getId() != null) getById(product.getId());
         product.setStoreId(com.bama.store.security.SecurityUtil.storeId());
         // 条码唯一校验
@@ -62,7 +65,9 @@ public class ProductService {
         return product.getId();
     }
 
+    @org.springframework.transaction.annotation.Transactional
     public void updateStatus(Long id, Integer status) {
+        businessDictionary.requireEnabled();
         getById(id);
         Product product = new Product();
         product.setId(id);
@@ -70,7 +75,9 @@ public class ProductService {
         productMapper.updateById(product);
     }
 
+    @org.springframework.transaction.annotation.Transactional
     public void delete(Long id) {
+        businessDictionary.requireEnabled();
         getById(id);
         productMapper.deleteById(id);
     }

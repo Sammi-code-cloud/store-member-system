@@ -42,7 +42,7 @@
       </el-header>
 
       <el-main class="main">
-        <router-view v-if="ready && (userStore.storeId || ['/branches', '/member'].includes(route.path))" :key="userStore.storeId" />
+        <router-view v-if="ready && (userStore.storeId || ['/branches', '/member', '/business-dictionary'].includes(route.path))" :key="userStore.storeId" />
         <el-empty v-else-if="ready" description="暂无可用的营业分店" />
         <el-result v-else title="正在加载分店" />
       </el-main>

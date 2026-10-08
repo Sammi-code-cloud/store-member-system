@@ -16,6 +16,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class TeaRoomService {
     private final TeaRoomMapper teaRoomMapper;
+    private final BusinessDictionary businessDictionary;
     private final ReservationMapper reservations;
     private final RoomClosureMapper closures;
     private final AuditService audit;
@@ -34,6 +35,7 @@ public class TeaRoomService {
 
     @Transactional
     public Long save(TeaRoom input) {
+        businessDictionary.requireEnabled();
         TeaRoom room = input.getId() == null ? new TeaRoom() : lock(input.getId());
         if (room.getId() != null) SecurityUtil.ownStore(room.getStoreId());
         if (input.getName() == null || input.getName().isBlank() || input.getName().trim().length() > 64) throw new BusinessException("请填写 1–64 字的房间名称");
@@ -60,6 +62,7 @@ public class TeaRoomService {
 
     @Transactional
     public void delete(Long id) {
+        businessDictionary.requireEnabled();
         TeaRoom room = lock(id); SecurityUtil.ownStore(room.getStoreId());
         if (reservations.selectCount(new LambdaQueryWrapper<Reservation>().eq(Reservation::getRoomId, id)) > 0) throw new BusinessException("房间有关联预约，请改为停用以保留记录");
         teaRoomMapper.deleteById(id); audit.record("删除房间", id, room.getName());
@@ -75,6 +78,7 @@ public class TeaRoomService {
 
     @Transactional
     public void close(Long roomId, RoomClosure input) {
+        businessDictionary.requireEnabled();
         TeaRoom room = lock(roomId); SecurityUtil.ownStore(room.getStoreId());
         if (input.getClosureDate() == null || input.getClosureDate().isBefore(BookingRules.today())) throw new BusinessException("请选择今天或之后的日期");
         int start = BookingRules.minute(input.getStartTime()), end = BookingRules.minute(input.getEndTime());
@@ -92,6 +96,7 @@ public class TeaRoomService {
 
     @Transactional
     public void reopen(Long roomId, Long closureId) {
+        businessDictionary.requireEnabled();
         TeaRoom room = lock(roomId); SecurityUtil.ownStore(room.getStoreId());
         RoomClosure closure = closures.selectById(closureId);
         if (closure == null || !roomId.equals(closure.getRoomId())) throw new BusinessException("关闭记录不存在");

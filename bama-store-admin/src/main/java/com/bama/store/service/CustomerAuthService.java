@@ -24,9 +24,12 @@ public class CustomerAuthService {
     private final MemberAccountMapper accounts;
     private final PasswordEncoder encoder;
     private final JwtUtil jwt;
+    private final BusinessDictionary businessDictionary;
+
 
     @Transactional
     public Map<String, Object> register(String username, String password, String name) {
+        businessDictionary.requireEnabled();
         username = normalize(username);
         if (password == null || password.length() < 8 || password.length() > 64) throw new BusinessException("密码需为 8–64 位");
         if (name == null || name.isBlank() || name.trim().length() > 32) throw new BusinessException("请填写 1–32 字的称呼");
@@ -74,6 +77,7 @@ public class CustomerAuthService {
 
     @Transactional
     public Long createWechatMember(String phone) {
+        businessDictionary.requireEnabled();
             Member member=new Member(); member.setMemberNo(OrderNoUtil.generate("M")); member.setName("微信顾客");
             member.setPhone(phone);
             member.setLevel("NORMAL"); member.setDiscount(100); member.setPoints(0); member.setStatus(1);

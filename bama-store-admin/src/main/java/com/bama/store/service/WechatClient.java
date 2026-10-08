@@ -34,6 +34,14 @@ public class WechatClient {
   miniTokenExpiresAt=System.currentTimeMillis()+Math.max(0,body.path("expires_in").asLong()-120)*1000;
   return miniAccessToken;
  }
+ public int sendSubscription(java.util.Map<String,Object> payload) throws Exception {
+  var response=http.send(HttpRequest.newBuilder(URI.create("https://api.weixin.qq.com/cgi-bin/message/subscribe/send?access_token="+enc(miniToken())))
+   .timeout(Duration.ofSeconds(10)).header("Content-Type","application/json")
+   .POST(HttpRequest.BodyPublishers.ofString(json.writeValueAsString(payload))).build(),HttpResponse.BodyHandlers.ofString());
+  var body=json.readTree(response.body());
+  if(response.statusCode()!=200 || !body.has("errcode")) throw new IllegalStateException("Unknown subscription delivery result");
+  return body.path("errcode").asInt();
+ }
  /** The code carries a public store ID only, never a login token or a credential. */
  public String miniCode(Long storeId) {
   if(storeId==null || storeId<=0)throw new BusinessException("分店编号无效");

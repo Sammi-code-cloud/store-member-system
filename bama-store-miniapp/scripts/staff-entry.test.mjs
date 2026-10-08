@@ -1,8 +1,9 @@
+import { evaluateSource } from './privacy-test-runtime.mjs'
 import {test} from 'node:test'
 import assert from 'node:assert/strict'
 import {readFileSync} from 'node:fs'
 const storeSource=readFileSync(new URL('../common/store.js',import.meta.url),'utf8').replaceAll('export ', '')
-const loadStaffEntry=new Function(storeSource+';return loadStaffEntry')()
+const loadStaffEntry=evaluateSource(storeSource+';return loadStaffEntry')()
 
 test('guests do not request employee data and cached permission cannot reveal the entry',async()=>{
   let calls=0
@@ -27,7 +28,7 @@ const script=source.match(/<script>([\s\S]*?)<\/script>/)[1].replace(/^import .*
 test('clicking the entry rechecks revoked permission and does not navigate',async()=>{
   let navigated=false,accepted=false
   const auth={getToken:()=>'token',setLogin:()=>{accepted=true}}
-  const component=new Function('auth','api','CustomerNav','uni','loadStaffEntry', 'resolveWechatStaff',script)(auth,{staffSession:async()=>({staffId:1,permissions:[]})},{},{reLaunch:()=>{navigated=true}},loadStaffEntry)
+  const component=evaluateSource('auth','api','CustomerNav','uni','loadStaffEntry', 'resolveWechatStaff', 'paymentNotice',script)(auth,{staffSession:async()=>({staffId:1,permissions:[]})},{},{reLaunch:()=>{navigated=true}},loadStaffEntry,undefined,{})
   const state=Object.assign(component.data(),component.methods,{staffEntry:{name:'店员'}})
   await state.openStaff()
   assert.equal(state.staffEntry,null)
@@ -38,7 +39,7 @@ test('clicking the entry rechecks revoked permission and does not navigate',asyn
 
 test('leaving homepage ignores an in-flight permission response',async()=>{
   let resolve
-  const component=new Function('auth','api','CustomerNav','uni','loadStaffEntry', 'resolveWechatStaff',script)({getToken:()=>'token'},{staffSession:()=>new Promise(r=>{resolve=r})},{},{},loadStaffEntry)
+  const component=evaluateSource('auth','api','CustomerNav','uni','loadStaffEntry', 'resolveWechatStaff', 'paymentNotice',script)({getToken:()=>'token'},{staffSession:()=>new Promise(r=>{resolve=r})},{},{},loadStaffEntry,undefined,{})
   const state=Object.assign(component.data(),component.methods,{stopBanners(){}})
   const pending=state.refreshStaffEntry()
   component.onHide.call(state)
@@ -51,7 +52,7 @@ test('authorized entry refreshes employee permissions before opening workbench',
   let route,account
   const auth={getToken:()=>'token',setLogin:value=>{account=value}}
   const staff={staffId:1,name:'店员',permissions:['dashboard:view']}
-  const component=new Function('auth','api','CustomerNav','uni','loadStaffEntry', 'resolveWechatStaff',script)(auth,{staffSession:async()=>staff},{},{reLaunch:({url})=>{route=url}},loadStaffEntry)
+  const component=evaluateSource('auth','api','CustomerNav','uni','loadStaffEntry', 'resolveWechatStaff', 'paymentNotice',script)(auth,{staffSession:async()=>staff},{},{reLaunch:({url})=>{route=url}},loadStaffEntry,undefined,{})
   const state=Object.assign(component.data(),component.methods,{staffEntry:staff})
   await state.openStaff()
   assert.equal(route,'/pages/staff/workbench')
@@ -63,7 +64,7 @@ test('background permission check expires staff session without redirecting a cu
   const storage=new Map([['token','expired'],['staff',{staffId:1}],['customer_token','customer']])
   let options
   const uni={getStorageSync:k=>storage.get(k),removeStorageSync:k=>storage.delete(k),request:o=>{options=o},showToast:()=>{throw Error('Unexpected toast')},reLaunch:()=>{throw Error('Unexpected navigation')}}
-  const request=new Function('uni','networkError',requestSource)(uni,e=>e)
+  const request=evaluateSource('uni','networkError',requestSource)(uni,e=>e)
   const pending=request({url:'/api/auth/me',silent:true})
   options.success({statusCode:200,data:{code:401}})
   await assert.rejects(pending)
@@ -75,7 +76,7 @@ test('background permission check expires staff session without redirecting a cu
 test('bound WeChat employee is recognized after customer login without a previous employee token',async()=>{
   const storage=new Map([['customer_token','customer'],['app_identity','customer']])
   const uni={getStorageSync:k=>storage.get(k),setStorageSync:(k,v)=>storage.set(k,v)}
-  const auth=new Function('uni',storeSource+';return auth')(uni)
+  const auth=evaluateSource('uni',storeSource+';return auth')(uni)
   const employee={staffId:3,name:'员工',token:'staff-new',permissions:['dashboard:view']}
   const result=await loadStaffEntry(auth,()=>{throw Error('No token should not request me')},async()=>employee)
   assert.deepEqual(result,employee)
@@ -106,7 +107,7 @@ test('WeChat lookup uses a fresh code, only accepts STAFF accounts, and never bi
   const source=readFileSync(new URL('../common/wechat.js',import.meta.url),'utf8').replace(/^import .*$/gm,'').replaceAll('export ','')
   let response={audience:'STAFF',bindRequired:false,account:{staffId:3,token:'staff',permissions:['dashboard:view']}}
   const calls=[]
-  const lookup=new Function('request','uni','wx',source+';return resolveWechatStaff')(async o=>{calls.push(o);return response},{login:({success})=>success({code:'fresh-code'})},{login(){}})
+  const lookup=evaluateSource('request','uni','wx',source+';return resolveWechatStaff')(async o=>{calls.push(o);return response},{login:({success})=>success({code:'fresh-code'})},{login(){}})
   assert.equal((await lookup()).staffId,3)
   assert.deepEqual(calls[0].data,{code:'fresh-code',audience:'STAFF'})
   assert.equal(calls[0].silent,true)

@@ -5,6 +5,8 @@ import request from '@/utils/request'
  * 路径与 bama-store-admin 的 Controller 一一对应
  */
 export const api = {
+  businessDictionary: () => request.get('/business-dictionary'),
+  updateBusinessDictionary: enabled => request.put('/business-dictionary', { enabled }),
   reservationConfirm: id => request.post(`/reservations/${id}/confirm`),
   reservationReject: (id,reason) => request.post(`/reservations/${id}/reject`,{reason}),
   // ---------- 认证 ----------
@@ -49,6 +51,7 @@ export const api = {
   staffPage: params => request.get('/staff', { params }),
   staffCreate: data => request.post('/staff', data),
   staffWechatCode: id => request.get(`/staff/${id}/wechat-code`),
+  staffWxpusher: (id, uid) => request.put(`/staff/${id}/wxpusher`, { uid }),
   staffUpdate: (id, data) => request.put(`/staff/${id}`, data),
   staffStatus: (id, status) => request.put(`/staff/${id}/status`, null, { params: { status } }),
   staffResetPassword: (id, password) => request.put(`/staff/${id}/password`, { password }),

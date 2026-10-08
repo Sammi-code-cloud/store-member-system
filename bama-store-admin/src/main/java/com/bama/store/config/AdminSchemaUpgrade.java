@@ -23,7 +23,7 @@ public class AdminSchemaUpgrade implements ApplicationRunner {
     @Override
     public void run(ApplicationArguments args) throws Exception {
         try (Connection connection = dataSource.getConnection()) {
-            jdbc.execute("CREATE TABLE IF NOT EXISTS t_staff_store (staff_id BIGINT NOT NULL, store_id BIGINT NOT NULL, PRIMARY KEY (staff_id, store_id))");
+            jdbc.execute("CREATE TABLE IF NOT EXISTS t_staff_store (staff_id BIGINT NOT NULL, store_id BIGINT NOT NULL, PRIMARY KEY (staff_id, store_id), " + AuditColumns.definition(jdbc) + ")");
             boolean h2 = connection.getMetaData().getDatabaseProductName().equals("H2");
             add(connection, "t_member", Map.of("username", "VARCHAR(40)", "password", "VARCHAR(100)",
                     "last_login_time", "TIMESTAMP NULL", "remark", "VARCHAR(500)"));
@@ -53,8 +53,8 @@ public class AdminSchemaUpgrade implements ApplicationRunner {
                 jdbc.execute(h2 ? "ALTER TABLE t_reservation DROP CONSTRAINT uk_room_slot"
                         : "ALTER TABLE t_reservation DROP INDEX uk_room_slot");
             }
-            jdbc.execute("CREATE TABLE IF NOT EXISTS t_room_closure (id BIGINT AUTO_INCREMENT PRIMARY KEY, room_id BIGINT NOT NULL, closure_date DATE NOT NULL, start_time VARCHAR(5) NOT NULL, end_time VARCHAR(5) NOT NULL, reason VARCHAR(255), store_id BIGINT, create_time TIMESTAMP NULL, update_time TIMESTAMP NULL, deleted TINYINT DEFAULT 0 NOT NULL)");
-            jdbc.execute("CREATE TABLE IF NOT EXISTS t_audit_log (id BIGINT AUTO_INCREMENT PRIMARY KEY, staff_id BIGINT, store_id BIGINT, actor VARCHAR(64), action VARCHAR(64), target VARCHAR(128), detail VARCHAR(2000), create_time TIMESTAMP NULL, update_time TIMESTAMP NULL, deleted TINYINT DEFAULT 0 NOT NULL)");
+            jdbc.execute("CREATE TABLE IF NOT EXISTS t_room_closure (id BIGINT AUTO_INCREMENT PRIMARY KEY, room_id BIGINT NOT NULL, closure_date DATE NOT NULL, start_time VARCHAR(5) NOT NULL, end_time VARCHAR(5) NOT NULL, reason VARCHAR(255), store_id BIGINT, " + AuditColumns.definition(jdbc) + ")");
+            jdbc.execute("CREATE TABLE IF NOT EXISTS t_audit_log (id BIGINT AUTO_INCREMENT PRIMARY KEY, staff_id BIGINT, store_id BIGINT, actor VARCHAR(64), action VARCHAR(64), target VARCHAR(128), detail VARCHAR(2000), " + AuditColumns.definition(jdbc) + ")");
             for (String[] p : new String[][]{{"account:view", "资金流水", "account"}, {"audit:view", "操作记录", "audit"}}) {
                 jdbc.update("INSERT INTO t_permission(code,name,module) SELECT ?,?,? WHERE NOT EXISTS (SELECT 1 FROM t_permission WHERE code=? AND deleted=0)", p[0], p[1], p[2], p[0]);
                 jdbc.update("INSERT INTO t_role_permission(role_id,permission_id) SELECT r.id,p.id FROM t_role r,t_permission p WHERE r.code='STORE_MANAGER' AND r.deleted=0 AND p.code=? AND p.deleted=0 AND NOT EXISTS(SELECT 1 FROM t_role_permission rp WHERE rp.role_id=r.id AND rp.permission_id=p.id)", p[0]);

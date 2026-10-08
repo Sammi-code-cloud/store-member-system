@@ -1,6 +1,7 @@
+import { withConsentRuntime } from './privacy-test-runtime.mjs'
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { parseStaffScene, bindStaffWechat } from '../common/staff-bind.mjs'
+import { parseStaffScene, bindStaffWechat as originalbindStaffWechat } from '../common/staff-bind.mjs'
 const ticket='abcdefghijklmnopqrstuv'
 
 test('only valid staff scenes are accepted', () => {
@@ -23,3 +24,5 @@ test('invalid inputs and failed WeChat authorization never submit binding', asyn
   await assert.rejects(bindStaffWechat(ticket,'bad',{},request),/手机号/)
   await assert.rejects(bindStaffWechat(ticket,'13800000001',{login(o){o.fail()}},request),/授权失败/)
 })
+
+function bindStaffWechat(ticket,phone,runtime,request){return originalbindStaffWechat(ticket,phone,withConsentRuntime(runtime),request)}

@@ -68,6 +68,8 @@ export default {
   customerCancel: (id, reason) => request({ url: `/api/customer/reservations/${id}/cancel`, method: 'POST', data: { reason } }),
   customerHome: (memberId = customerId()) => request({ url: `/api/customer/${memberId}` }),
   customerBookingContact: () => request({ url: '/api/customer/booking-contact' }),
+  customerBookingNoticeSettings: () => request({ url: '/api/customer/booking-notices', silent: true }),
+  customerBookingNoticeRegister: code => request({ url: '/api/customer/booking-notices', method: 'POST', data: { code }, silent: true }),
   customerRecords: (memberId = customerId()) => request({ url: `/api/customer/${memberId}/records` }),
   customerStores: async () => (await request({ url: '/api/customer/stores' })).filter(s => s.status === 1 && !s.deleted),
   customerBanners: (storeId) => request({ url: '/api/customer/banners' + qs({ storeId }) }),

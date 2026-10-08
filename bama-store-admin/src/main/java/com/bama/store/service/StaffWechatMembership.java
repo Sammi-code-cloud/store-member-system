@@ -19,9 +19,12 @@ public class StaffWechatMembership {
     private final JdbcTemplate jdbc;
     private final MemberMapper members;
     private final MemberAccountMapper wallets;
+    private final BusinessDictionary businessDictionary;
+
 
     @Transactional
     public Long synchronize(Long staffId) {
+        businessDictionary.requireEnabled();
         var staffRows=jdbc.queryForList("SELECT name,phone FROM t_staff WHERE id=? AND status=1 AND deleted=0 FOR UPDATE",staffId);
         if(staffRows.size()!=1)throw new BusinessException("员工不存在或已停用");
         var keys=jdbc.queryForList("SELECT identity_key FROM t_wechat_account WHERE audience='STAFF' AND account_id=? ORDER BY identity_key",String.class,staffId);

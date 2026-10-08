@@ -13,7 +13,9 @@ import org.springframework.stereotype.Component;
 public class StaffMembershipBackfill implements ApplicationRunner {
     private final JdbcTemplate jdbc;
     private final StaffWechatMembership membership;
+    private final com.bama.store.service.BusinessDictionary businessDictionary;
     public void run(ApplicationArguments args) {
+        if (!businessDictionary.enabled()) return;
         int completed=0,skipped=0;
         var ids=jdbc.queryForList("SELECT DISTINCT a.account_id FROM t_wechat_account a JOIN t_staff s ON s.id=a.account_id WHERE a.audience='STAFF' AND s.status=1 AND s.deleted=0",Long.class);
         for(var id:ids) {

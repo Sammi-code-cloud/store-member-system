@@ -11,7 +11,7 @@
 
       <el-form ref="formRef" :model="form" :rules="rules" size="large" @keyup.enter="onSubmit">
         <el-form-item prop="phone">
-          <el-input v-model="form.phone" placeholder="手机号" :prefix-icon="User" />
+          <el-input v-model="form.phone" placeholder="管理员账号 / 手机号" :prefix-icon="User" />
         </el-form-item>
         <el-form-item prop="password">
           <el-input v-model="form.password" type="password" placeholder="密码" show-password :prefix-icon="Lock" />
@@ -69,7 +69,7 @@ async function wechat(){
 }
 const form = reactive({ phone: '', password: '' })
 const rules = {
-  phone: [{ required: true, message: '请输入手机号', trigger: 'blur' }],
+  phone: [{ required: true, message: '请输入管理员账号或手机号', trigger: 'blur' }],
   password: [{ required: true, message: '请输入密码', trigger: 'blur' }]
 }
 

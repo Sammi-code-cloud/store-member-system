@@ -4,6 +4,8 @@
       "path": "pages/customer/home",
       "style": {
         "navigationBarTitleText": "八马茶业",
+        "enableShareAppMessage": true,
+        "enableShareTimeline": true,
         "navigationStyle": "custom"
       }
     },
@@ -14,7 +16,7 @@
     },
     {
       "path": "pages/customer/entry",
-      "style": { "navigationBarTitleText": "微信扫码登录" }
+      "style": { "navigationBarTitleText": "门店会员登录" }
     },
     {
       "path": "pages/role/select",
@@ -38,7 +40,9 @@
     {
       "path": "pages/customer/rooms",
       "style": {
-        "navigationBarTitleText": "茶室预定"
+        "navigationBarTitleText": "茶室预定",
+        "enableShareAppMessage": true,
+        "enableShareTimeline": true
       }
     },
     {
@@ -92,6 +96,8 @@
         "navigationBarTitleText": "数据概览"
       }
     },
+    {"path":"pages/legal/document","style":{"navigationBarTitleText":"协议与隐私政策"}},
+    {"path":"pages/legal/privacy-settings","style":{"navigationBarTitleText":"隐私与授权"}},
     {
       "path": "pages/staff/profile",
       "style": {

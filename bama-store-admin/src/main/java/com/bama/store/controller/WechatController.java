@@ -15,6 +15,7 @@ public class WechatController {
  public record ExchangeRequest(String code,String state) {}
  public record BindRequest(String ticket,String phone,String password) {}
  private final CustomerWechatBinding customerBinding;
+ private final BusinessDictionary businessDictionary;
  public record SmsRequest(String ticket,String phone) {}
  public record CustomerBindRequest(String ticket,String phone,String challenge,String code) {}
  @PostMapping("/customer/sms") public Result<?> sms(@RequestBody SmsRequest body,HttpServletRequest request) {
@@ -39,8 +40,10 @@ public class WechatController {
   if(browser.isBlank()||!state.get("browser").equals(WechatFlows.hash(browser)))throw new BusinessException("微信登录校验失败，请从当前页面重新发起");
   return Result.success(accounts.login(client.exchange("WEB",body.code()),state.get("audience")));
  }
+ @org.springframework.transaction.annotation.Transactional
  @PostMapping("/bind") public Result<?> bind(@RequestBody BindRequest body){
-  var ticket=flows.consume(body.ticket(),"BIND");
+  businessDictionary.requireEnabled();
+  var ticket=flows.consumeStaffBinding(body.ticket());
   if(body.phone()==null||body.password()==null||body.phone().length()>20||body.password().length()>64)throw new BusinessException("请填写员工账号密码");
   LoginRequest request=new LoginRequest();request.setPhone(body.phone());request.setPassword(body.password());
   var verified=auth.login(request);

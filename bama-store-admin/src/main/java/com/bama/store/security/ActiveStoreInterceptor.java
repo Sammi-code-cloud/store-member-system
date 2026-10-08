@@ -23,6 +23,7 @@ public class ActiveStoreInterceptor implements HandlerInterceptor {
         String method = request.getMethod();
         if (route.startsWith("/api/customer/") || route.startsWith("/api/wechat/") || route.startsWith("/api/auth/")) return true;
         if (route.equals("/api/store") && (method.equals("GET") || method.equals("POST"))) return true;
+        if (route.equals("/api/business-dictionary") && (method.equals("GET") || method.equals("PUT"))) return true;
         if (route.equals("/api/store/{id}/status") && method.equals("PUT")) return true;
         if (route.equals("/api/store/{id}") && method.equals("DELETE")) return true;
         stores.requireActive(staff.getStoreId());

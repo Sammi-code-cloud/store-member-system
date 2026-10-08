@@ -104,7 +104,7 @@ cp application-local.yml.example application-local.yml
 ```
 
 `application-local.yml` 已在 `.gitignore` 中忽略，仅存在于本地，不会被提交。
-数据库连接信息请向项目负责人或 DBA 索取。
+项目 MySQL 数据库统一使用 `bama`；通过环境变量启动时设置 `DB_NAME=bama`。数据库连接信息请向项目负责人或 DBA 索取。
 
 ### 3. 启动后端
 

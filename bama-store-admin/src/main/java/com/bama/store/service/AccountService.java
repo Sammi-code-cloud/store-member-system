@@ -37,6 +37,8 @@ public class AccountService {
     private final AuditService audit;
     private final StoreAvailability storeAvailability;
     private final ChargeIdempotency chargeIdempotency;
+    private final WalletNotices walletNotices;
+    private final BusinessDictionary businessDictionary;
 
     /** 扫码解析付款码 → 会员信息（付款码一次性失效） */
     public MemberChargeInfoVo resolvePayCode(String payCode) {
@@ -74,6 +76,7 @@ public class AccountService {
     /** 会员储值 */
     @Transactional(rollbackFor = Exception.class)
     public void recharge(RechargeRequest req, Long staffId, Long storeId) {
+        businessDictionary.requireEnabled();
         storeAvailability.lockActive(storeId);
         Member member = memberMapper.selectById(req.getMemberId());
         if (member == null || !Integer.valueOf(1).equals(member.getStatus())) {
@@ -95,7 +98,8 @@ public class AccountService {
         }
 
         // 本金流水
-        saveTxn(member.getId(), OrderNoUtil.generate("RC"), "RECHARGE", amount,
+        String rechargeNo = OrderNoUtil.generate("RC");
+        saveTxn(member.getId(), rechargeNo, "RECHARGE", amount,
                 before, afterPrincipal, null, staffId, storeId, req.getRemark());
         // 赠送流水
         if (gift.compareTo(BigDecimal.ZERO) > 0) {
@@ -103,11 +107,13 @@ public class AccountService {
                     afterPrincipal, after, null, staffId, storeId, "储值赠送");
         }
         audit.record("代客充值", member.getMemberNo(), "本金 ¥" + amount + "，赠送 ¥" + gift + "，余额 " + before + " → " + after);
+        walletNotices.enqueue("RECHARGE",rechargeNo,member.getId(),storeId,amount,gift,after);
     }
 
     /** 扫码扣款（核心） */
     @Transactional(rollbackFor = Exception.class)
     public ChargeResultVo charge(ChargeConfirmRequest req, Long staffId, Long storeId, String staffName) {
+        businessDictionary.requireEnabled();
         storeAvailability.lockActive(storeId);
         Member member = memberMapper.selectById(req.getMemberId());
         if (member == null || !Integer.valueOf(1).equals(member.getStatus())) {
@@ -209,6 +215,7 @@ public class AccountService {
         vo.setStaffName(staffName);
         vo.setTime(LocalDateTime.now());
         chargeIdempotency.complete(bizNo, vo);
+        walletNotices.enqueue("CHARGE",orderNo,member.getId(),storeId,pay,BigDecimal.ZERO,after);
         return vo;
     }
 

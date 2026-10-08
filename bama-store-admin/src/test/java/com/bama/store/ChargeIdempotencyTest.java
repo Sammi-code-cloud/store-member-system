@@ -17,7 +17,33 @@ import static org.mockito.Mockito.*;
 
 @SpringBootTest(properties={"spring.datasource.url=jdbc:h2:mem:charge_once;DB_CLOSE_DELAY=-1;MODE=MySQL;DATABASE_TO_LOWER=TRUE;LOCK_TIMEOUT=20000","logging.level.root=ERROR","logging.level.com.bama.store=ERROR","mybatis-plus.configuration.log-impl=org.apache.ibatis.logging.nologging.NoLoggingImpl"})
 @ActiveProfiles("h2")
+@org.springframework.test.context.jdbc.Sql(statements = "UPDATE t_business_dictionary SET dict_value='1' WHERE dict_key='business_enabled'")
 class ChargeIdempotencyTest {
+ @Autowired com.bama.store.config.WalletSmsProperties smsConfig;
+ @Test void moneyOperationsDoNotQueueSmsEvenWithLegacySmsConfiguration() throws Exception {
+  smsConfig.setEnabled(true);smsConfig.setAccessKeyId("test");smsConfig.setAccessKeySecret("test");smsConfig.setSignName("test");smsConfig.setChargeTemplate("charge");smsConfig.setRechargeTemplate("recharge");
+  try {
+   jdbc.update("DELETE FROM t_sms_wallet_notice");charge(manual("sms-once"));charge(manual("sms-once"));
+   var recharge=new RechargeRequest();recharge.setMemberId(1L);recharge.setAmount(new BigDecimal("50"));recharge.setGiftAmount(new BigDecimal("5"));service.recharge(recharge,1L,1L);
+   assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM t_sms_wallet_notice",Integer.class)).isZero();
+   assertThat(jdbc.queryForObject("SELECT balance FROM t_member_account WHERE member_id=1",BigDecimal.class)).isEqualByComparingTo("145.00");
+  } finally {smsConfig.setEnabled(false);jdbc.update("DELETE FROM t_sms_wallet_notice");}
+ }
+ @Autowired com.bama.store.config.WalletNoticeProperties noticeConfig;
+ @Test void successfulMoneyChangesEnqueueOneNoticePerOperation() {
+  noticeConfig.setEnabled(true);
+  noticeConfig.getRecharge().setId("test-recharge");noticeConfig.getCharge().setId("test-charge");
+  noticeConfig.getRecharge().setFields(Map.of("amount","amount1"));noticeConfig.getCharge().setFields(Map.of("amount","amount1"));
+  jdbc.update("DELETE FROM t_wx_wallet_notice");
+  try {
+   charge(manual("notice-once"));charge(manual("notice-once"));
+   assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM t_wx_wallet_notice",Integer.class)).isEqualTo(1);
+   var recharge=new RechargeRequest();recharge.setMemberId(1L);recharge.setAmount(new BigDecimal("50"));recharge.setGiftAmount(new BigDecimal("5"));
+   service.recharge(recharge,1L,1L);
+   assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM t_wx_wallet_notice",Integer.class)).isEqualTo(2);
+   assertThat(balance()).isEqualByComparingTo("145");
+  } finally {noticeConfig.setEnabled(false);jdbc.update("DELETE FROM t_wx_wallet_notice");}
+ }
  @Autowired AccountService service; @Autowired JdbcTemplate jdbc; @SpyBean AuditService audit;
  @BeforeEach void setup(){reset(audit);jdbc.update("DELETE FROM t_charge_request");jdbc.update("DELETE FROM t_consume_item");jdbc.update("DELETE FROM t_consume_order");jdbc.update("DELETE FROM t_wallet_txn");jdbc.update("UPDATE t_member SET status=1,discount=80 WHERE id=1");jdbc.update("UPDATE t_member_account SET balance=100,total_consume=0,version=0 WHERE member_id=1");}
  ChargeConfirmRequest manual(String no){var r=new ChargeConfirmRequest();r.setMemberId(1L);r.setAmount(new BigDecimal("10.00"));r.setBizNo(no);return r;}

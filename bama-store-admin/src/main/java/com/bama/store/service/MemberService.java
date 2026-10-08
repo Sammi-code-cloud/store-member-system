@@ -18,6 +18,7 @@ import org.springframework.util.StringUtils;
 @Service
 @RequiredArgsConstructor
 public class MemberService {
+    private final com.bama.store.service.BusinessDictionary businessDictionary;
 
     private final MemberMapper memberMapper;
     private final MemberAccountMapper memberAccountMapper;
@@ -68,6 +69,7 @@ public class MemberService {
 
     @org.springframework.transaction.annotation.Transactional
     public void update(Long id, String name, String remark, Integer status) {
+        businessDictionary.requireEnabled();
         Member member = getById(id);
         if (name == null || name.isBlank() || name.length() > 32) throw new BusinessException("姓名需为 1–32 字");
         if (remark != null && remark.length() > 500) throw new BusinessException("备注最多500字");

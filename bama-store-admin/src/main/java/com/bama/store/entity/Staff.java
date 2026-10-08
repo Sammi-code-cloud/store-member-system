@@ -27,6 +27,9 @@ public class Staff extends BaseEntity {
     private java.util.List<String> storeNames;
     @com.baomidou.mybatisplus.annotation.TableField(exist = false)
     private boolean allStores;
+    /** Notification UID for the currently selected store only. */
+    @com.baomidou.mybatisplus.annotation.TableField(exist = false)
+    private String wxpusherUid;
     private Long storeId;
     /** 1在职 0停用 */
     private Integer status;

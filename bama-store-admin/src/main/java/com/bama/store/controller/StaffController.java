@@ -20,6 +20,14 @@ public class StaffController {
 
     private final StaffService staffService;
 
+    public record WxpusherRequest(String uid) {}
+    @PutMapping("/{id}/wxpusher")
+    @PreAuthorize("hasAuthority('staff:manage')")
+    public Result<Void> updateWxpusher(@PathVariable Long id, @RequestBody WxpusherRequest body) {
+        staffService.updateWxpusher(id, body.uid());
+        return Result.success();
+    }
+
     @GetMapping("/{id}/wechat-code")
     @PreAuthorize("hasAuthority('staff:manage')")
     public Result<?> wechatCode(@PathVariable Long id, jakarta.servlet.http.HttpServletResponse response) {

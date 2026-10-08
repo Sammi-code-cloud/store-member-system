@@ -14,10 +14,12 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/store")
 @RequiredArgsConstructor
 public class StoreController {
+    private final com.bama.store.service.BusinessDictionary businessDictionary;
 
     private final StoreMapper storeMapper;
     private final com.bama.store.service.AuditService audit;
     private final com.bama.store.service.WechatClient wechat;
+    private final org.springframework.beans.factory.ObjectProvider<com.bama.store.config.DefaultAdministrator> defaultAdministrator;
 
     @GetMapping("/{id}/mini-code")
     @PreAuthorize("hasAnyAuthority('store:manage','store:all')")
@@ -44,12 +46,14 @@ public class StoreController {
     @PreAuthorize("hasAuthority('store:all')")
     @org.springframework.transaction.annotation.Transactional
     public Result<Long> create(@RequestBody Store body) {
+        businessDictionary.requireEnabled();
         validate(body);
         Store store = new Store();
         store.setName(body.getName().trim()); store.setAddress(body.getAddress()); store.setPhone(body.getPhone());
         store.setOpenTime(body.getOpenTime()); store.setCloseTime(body.getCloseTime());
         store.setReservationNotice(body.getReservationNotice()); store.setStatus(body.getStatus());
         storeMapper.insert(store);
+        defaultAdministrator.ifAvailable(admin -> admin.attachToFirstStore(store.getId()));
         audit.record("新增分店", store.getId(), store.getName());
         return Result.success(store.getId());
     }
@@ -74,6 +78,7 @@ public class StoreController {
     @org.springframework.transaction.annotation.Transactional
     @PreAuthorize("hasAuthority('store:manage')")
     public Result<Void> update(@PathVariable Long id, @RequestBody Store body) {
+        businessDictionary.requireEnabled();
         com.bama.store.security.SecurityUtil.ownStore(id);
         if (body.getName() == null || body.getName().isBlank() || body.getName().length() > 64) throw new com.bama.store.common.BusinessException("请填写有效门店名称");
         if (body.getStatus() == null || body.getStatus() != 0 && body.getStatus() != 1) throw new com.bama.store.common.BusinessException("营业状态无效");

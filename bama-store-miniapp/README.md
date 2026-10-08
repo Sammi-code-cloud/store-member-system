@@ -44,10 +44,11 @@ npm run dev:mp-weixin    # 微信小程序，产物在 dist/dev/mp-weixin，用�
 > `npx degit dcloudio/uni-preset-vue#vite bama-store-miniapp`
 
 ## 四、联调后端
-1. 先启动后端 `bama-store-admin`（默认 `http://localhost:8080`）。
-2. `common/request.js` 中 `BASE_URL` 指向后端地址。
-3. 微信开发者工具中勾选「设置 → 本地设置 → 不校验合法域名」，即可请求 localhost。
-4. 真机 / 正式发布：后端需换成已备案的 **https 域名**，并在微信公众平台配置 request 合法域名。
+1. 先启动或部署后端 `bama-store-admin`。H5 本地联调可使用本地 HTTP 地址；微信小程序的请求封装要求 HTTPS。
+2. 将 `.env.example` 复制为 `.env.local`（开发）和 `.env.production.local`（发布），设置 `VITE_API_BASE_URL`。例如：`https://example.com/bama`。
+3. API 基址包含部署前缀，但不带 `/api`；`common/request.js` 会拼接各接口已有的 `/api/...` 路径。
+4. 在微信公众平台配置 request 合法域名，例如 `https://example.com`，只填写协议和域名，不填写 `/bama` 等路径。保持开发者工具的合法域名校验开启，重新编译、上传测试，正式版审核发布后生效。
+5. 真实域名、AppID 和密钥保存在已忽略的本地配置中。公开模板只使用示例占位内容；后端密钥不写入小程序源码。
 
 ## 五、可跑通的真实流程（员工端，后端已支持）
 1. 角色入口选「我是员工」→ 用演示账号登录（收银员 `13800000001 / 123456`）。
@@ -68,3 +69,11 @@ npm run dev:mp-weixin    # 微信小程序，产物在 dist/dev/mp-weixin，用�
 在项目根目录运行 `node bama-store-miniapp/scripts/build-preview.cjs`，然后启动已有的 `bama-store-web/preview-local.cjs`，访问 `http://127.0.0.1:5175/miniapp/index.html`。
 
 预览从实际 Vue 页面编译，使用本地接口与独立的预览登录存储。浏览器适配器仅用于样式检查，不是 uni-app H5 或微信生产构建；小程序需继续用 HBuilderX / 微信开发者工具验证。重新构建 Web 后台会清理 dist，需重新执行预览生成命令。
+
+## 协议、隐私与审核
+
+发布前在忽略的 `.env.local`、`.env.production.local` 配置 `VITE_LEGAL_OPERATOR`、`VITE_PRIVACY_CONTACT_PHONE`、`VITE_LEGAL_ADDRESS`。这些是向用户展示的公开运营资料；仓库只提供示例。未配置时登录授权不能通过。修改处理目的、方式或范围时更新 `PRIVACY_VERSION` 并重新征求同意。
+
+登录页提供完整协议入口，首次默认不勾选。会员资金信息另行勾选；微信平台需要隐私授权时展示原生同意按钮。未同意不调用微信登录或发送个人信息请求，公开门店/商品/茶室接口不携带账户令牌。旧版本无授权记录的登录状态首次启动时清除。预约的 WxPusher 信息提供逐次征求单独同意，拒绝可电话预约。个人中心可撤回本机授权、查看政策和联系运营者办理删除/注销。
+
+还需在微信公众平台维护本小程序的“用户隐私保护指引”：运营主体和联系方式须与构建配置一致；按真实用途填写微信标识、手机号、姓名/称呼、会员余额与交易记录、预约资料、相机扫码及通知服务等涉及的类型。代码上传不会自动更新平台指引。审核复现步骤见 `../docs/guides/小程序隐私审核.md`。

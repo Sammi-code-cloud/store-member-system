@@ -80,3 +80,12 @@ project.private.config.json
 *.sql.gz
 *.dump
 /bama-store-web/dist-login-fix/
+
+# Python local cache
+__pycache__/
+*.pyc
+
+# Local release bundles and private training recordings
+/bama-store-web/dist-*/
+/docs/staff-training/
+/docs/staff-training-recording/

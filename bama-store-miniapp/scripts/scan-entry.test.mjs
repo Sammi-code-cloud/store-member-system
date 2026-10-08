@@ -1,3 +1,4 @@
+import { evaluateSource } from './privacy-test-runtime.mjs'
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
@@ -28,9 +29,9 @@ function fixture(stores = [{id:2,name:'测试分店',status:1}], binding = false
   const api = {customerStores:async()=>stores,customerHome:async()=>({})}
   const auth = {setCustomerLogin:account=>{data.set('customer_token',account.token);data.set('app_identity','customer')}}
   const flowSource=readFileSync(new URL('../common/customer-wechat.js',import.meta.url),'utf8').replace(/^import .*$/gm,'').replace(/export /g,'')
-  const complete=new Function('uni','auth',flowSource+';return completeCustomerWechat')(uni,auth)
+  const complete=evaluateSource('uni','auth',flowSource+';return completeCustomerWechat')(uni,auth)
   const result=binding?{audience:'CUSTOMER',bindRequired:true,bindTicket:'pending-ticket',smsEnabled:true}:{audience:'CUSTOMER',account:{token:'customer-token',memberId:3}}
-  const component = new Function('uni','api','auth','wechatLogin','parseStoreScene','completeCustomerWechat',source)(uni,api,auth,async()=>result,parseStoreScene,complete)
+  const component = evaluateSource('uni','api','auth','wechatLogin','parseStoreScene','completeCustomerWechat',source)(uni,api,auth,async()=>result,parseStoreScene,complete)
   const vm = component.data()
   for (const [name, method] of Object.entries(component.methods)) vm[name] = method.bind(vm)
   vm.scene='s=2'

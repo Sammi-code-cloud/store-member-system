@@ -22,9 +22,14 @@ public class MemberEnrollment {
     private final CustomerAuthService customers;
     private final WechatClient wechat;
     private final AuditService audit;
+    private final BusinessDictionary businessDictionary;
+    private final WechatFlows flows;
+    private final SmsSender sms;
+
 
     @Transactional
     public Map<String,Object> create(String name,String phone,String remark){
+        businessDictionary.requireEnabled();
         if(name==null||name.trim().isEmpty()||name.trim().length()>32)throw new BusinessException("请填写1–32字会员姓名");
         if(phone==null||!phone.matches("1[3-9]\\d{9}"))throw new BusinessException("请输入正确的11位手机号");
         if(remark!=null&&remark.length()>500)throw new BusinessException("备注最多500字");
@@ -43,6 +48,7 @@ public class MemberEnrollment {
     }
     @Transactional
     public Map<String,Object> code(Long id){
+        businessDictionary.requireEnabled();
         Member member=lockMember(id);
         if(member.getPhone()==null||!member.getPhone().matches("1[3-9]\\d{9}"))throw new BusinessException("请先登记有效会员手机号");
         if(jdbc.queryForObject("SELECT COUNT(*) FROM t_wechat_account WHERE audience='CUSTOMER' AND account_id=?",Integer.class,id)>0)
@@ -57,6 +63,7 @@ public class MemberEnrollment {
     }
     @Transactional(rollbackFor=Exception.class)
     public Map<String,Object> bind(String ticket,String phone,String code){
+        businessDictionary.requireEnabled();
         if(ticket==null||!ticket.matches("[A-Za-z0-9_-]{22}"))throw new BusinessException("会员绑定码无效，请向门店重新获取");
         if(phone==null||!phone.matches("1[3-9]\\d{9}"))throw new BusinessException("请输入登记的11位会员手机号");
         var rows=jdbc.queryForList("SELECT payload FROM t_wechat_flow WHERE token_hash=? AND kind='MEMBER_QR' AND expires_at>?",String.class,WechatFlows.hash(ticket),Timestamp.from(Instant.now()));
@@ -73,9 +80,9 @@ public class MemberEnrollment {
         for(String key:keys){
             if(!jdbc.queryForList("SELECT account_id FROM t_wechat_account WHERE identity_key=? AND audience='CUSTOMER' FOR UPDATE",Long.class,key).isEmpty())throw new BusinessException("当前微信已有会员档案，请联系门店核实，原余额保留");
         }
-        for(String key:keys)jdbc.update("INSERT INTO t_wechat_account(identity_key,audience,account_id) VALUES(?,'CUSTOMER',?)",key,id);
+        String bindTicket=flows.create("CUSTOMER_BIND",Map.of("app",identity.appId(),"openid",identity.openId(),"unionid",identity.unionId()==null?"":identity.unionId(),"audience","CUSTOMER","phone",phone));
         jdbc.update("DELETE FROM t_wechat_flow WHERE token_hash=? AND kind='MEMBER_QR'",WechatFlows.hash(ticket));
-        audit.record("会员绑定微信",member.getMemberNo(),"使用门店发放的绑定码完成绑定",Long.valueOf(payload[1]));
-        return Map.of("audience","CUSTOMER","bindRequired",false,"account",customers.wechatLogin(id));
+        audit.record("会员绑定验证",member.getMemberNo(),"扫码核对完成，等待短信验证",Long.valueOf(payload[1]));
+        return Map.of("audience","CUSTOMER","bindRequired",true,"bindTicket",bindTicket,"smsEnabled",sms.ready());
     }
 }

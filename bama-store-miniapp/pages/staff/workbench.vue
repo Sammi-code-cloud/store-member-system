@@ -85,7 +85,7 @@ export default {
   },
   computed: { canManage(){return auth.can('reservation:manage')}, canViewRecords(){return ['charge:scan','account:recharge','account:view'].some(p=>auth.can(p))} },
   onLoad() {
-    this.statusBarHeight = uni.getSystemInfoSync().statusBarHeight || 20
+    this.statusBarHeight = (uni.getWindowInfo?.().statusBarHeight) || 20
     this.staff = auth.getStaff() || {}
   },
   onShow() {

@@ -11,8 +11,7 @@
         <view v-if="banners.length>1" class="banner-dots"><button v-for="(banner,index) in banners" :key="banner.id" class="banner-dot" :class="{'is-active':index===bannerIndex}" :aria-label="'切换到第'+(index+1)+'张 Banner'" :aria-pressed="index===bannerIndex" @tap.stop="selectBanner(index)"><view /></button></view>
         <view v-if="banners.length>1" class="banner-controls"><button class="banner-arrow" aria-label="上一张 Banner" @tap.stop="moveBanner(-1)">‹</button><text>{{bannerIndex+1}} / {{banners.length}}</text><button class="banner-arrow" aria-label="下一张 Banner" @tap.stop="moveBanner(1)">›</button></view>
       </view>
-      <view v-if="!banners.length" class="hero" @tap="go('/pages/customer/rooms')"><view class="hero-copy"><text class="hero-kicker">留一段时间，给自己</text><text class="hero-title"><text>好茶相伴</text><text>自在小坐</text></text><text class="hero-sub">寻一处静室，与知己共饮</text><view class="hero-action">预订茶室 <text>↗</text></view></view><view class="tea-art"><view class="halo"/><view class="tea-leaf leaf-one"/><view class="tea-leaf leaf-two"/><view class="saucer"/><view class="cup"><view class="tea"/></view><text class="art-note">闲 · 适</text></view></view>
-      <view class="member-panel"><view class="member-top"><text>{{ loggedIn ? '我的会员账户' : '与好茶，初次相逢' }}</text><text class="member-level">{{ loggedIn ? member.levelText : '欢迎加入' }}</text></view><view class="member-bottom"><view v-if="loggedIn"><text class="balance-value">¥ {{ fmt(member.balance) }}</text><text class="balance-note">可用余额 · 各分店共享</text></view><view v-else @tap="go('/pages/customer/login')"><text class="login-label">登录 / 注册 ›</text><text class="balance-note">预订茶室，查看专属账户</text></view><view class="pay-entry" @tap="go(loggedIn ? '/pages/customer/paycode' : '/pages/customer/login')">付款凭证 ›</view></view></view>
+      <view class="member-panel"><view class="member-top"><text>{{ loggedIn ? '我的会员账户' : '与好茶，初次相逢' }}</text><text class="member-level">{{ loggedIn ? member.levelText : '欢迎加入' }}</text></view><view class="member-bottom"><view v-if="loggedIn"><text class="balance-value">¥ {{ fmt(member.balance) }}</text><text class="balance-note">可用余额 · 各分店共享</text></view><view v-else @tap="go('/pages/customer/login')"><text class="login-label">登录 / 注册 ›</text><text class="balance-note">预订茶室，查看专属账户</text></view><view class="pay-entry" @tap="openMemberPaycode">付款凭证 ›</view></view></view>
       <view v-if="staffEntry" class="member-panel staff-panel" @tap="openStaff">
         <view class="member-top"><text>员工工作台</text><text class="member-level">门店员工</text></view>
         <view class="member-bottom"><view class="staff-summary"><text class="staff-name">{{ staffEntry.name || '员工' }}</text><text class="balance-note">查看门店数据 · 处理日常事务</text></view><view class="pay-entry">{{ staffOpening ? '正在进入…' : '进入工作台 ›' }}</view></view>
@@ -20,19 +19,12 @@
       <view class="section-head"><view><text class="section-title">店内好茶</text><text class="section-note">慢慢选，细细品</text></view><text class="section-side">到店选购</text></view>
       <view v-if="!products.length" class="empty-state"><text class="empty-symbol">茶</text><text>好茶正在准备中</text><text class="empty-note">也可以先选一间喜欢的茶室</text></view>
       <view class="product-grid"><view v-for="(p,i) in products" :key="p.id" class="product-card"><view class="product-art" :class="'tone-'+i%3"><image v-if="p.image && !failedImages[p.id]" :src="p.image" mode="aspectFill" class="product-photo" @error="failedImages[p.id] = true"/><view v-else class="tea-tin"><text>八马</text><text class="tin-name">{{(p.category || '茗茶').slice(0,4)}}</text></view><text class="product-badge">店内精选</text></view><view class="product-info"><text class="product-name">{{p.name}}</text><text class="product-spec">{{p.spec || '到店品鉴'}}</text><view class="product-prices"><text class="product-price">¥{{Number(p.memberPrice).toFixed(0)}}</text><text class="retail">¥{{Number(p.retailPrice).toFixed(0)}}</text></view></view></view></view>
+      <!-- #ifdef MP-WEIXIN -->
+      <button class="share-entry" open-type="share">分享给好友 · 一起喝茶</button>
+      <!-- #endif -->
       <text class="end-note">一杯茶的时间，刚刚好</text>
     </view><CustomerNav active="home" />
-    <view v-if="showWelcome" class="welcome-mask" @touchmove.stop.prevent>
-      <view class="welcome-card" role="dialog" aria-modal="true" aria-label="欢迎登录八马茶业">
-        <view class="welcome-seal">茶</view>
-        <text class="welcome-kicker">八马茶业 · 欢迎到店</text>
-        <text class="welcome-title">好茶相逢，从这里开始</text>
-        <text class="welcome-description">登录后，即可预订茶室、查看订单，以及各分店共享的会员账户</text>
-        <view class="welcome-info"><text class="welcome-info-title">登录信息使用说明</text><text>我们将使用微信身份识别账户。已绑定会员可直接登录，首次注册时需填写联系手机号。</text></view>
-        <button class="welcome-primary" :loading="welcomeLoading" :disabled="welcomeLoading" @tap="welcomeWechat">微信登录</button>
-        <button class="welcome-skip" :disabled="welcomeLoading" @tap="showWelcome=false">先逛逛</button>
-      </view>
-    </view>
+
   </view>
 </template>
 
@@ -40,13 +32,13 @@
 import { auth, loadStaffEntry } from '@/common/store.js'
 
 import api from '@/common/api.js'
+import paymentNotice from '@/common/payment-notice.js'
 import CustomerNav from '@/components/CustomerNav.vue'
 import { BASE_URL } from '@/common/request.js'
-import { wechatLogin, resolveWechatStaff } from '@/common/wechat.js'
-import { completeCustomerWechat } from '@/common/customer-wechat.js'
-// Only remind once during this app launch, including when returning from login.
-let welcomeShown = false
+import { resolveWechatStaff } from '@/common/wechat.js'
+import { customerShare, receiveSharedStore } from '@/common/customer-share.mjs'
 export default {
+  mixins: [paymentNotice],
   components: { CustomerNav },
   data() {
     return {
@@ -54,7 +46,6 @@ export default {
       loggedIn: false,
       staffEntry: null, staffRequest: 0, staffOpening: false,
       banners: [], bannerIndex: 0, bannerTimer: null, bannerActive: false, bannerTouchX: 0, bannerTouchY: 0, bannerSkipTapUntil: 0, bannerRequest: 0,
-      showWelcome: false, welcomeLoading: false,
       member: { balance: 0, levelText: '会员', discount: 100 },
       stores: [], storeIndex: 0, storesRequest: 0,
       failedImages: {}, products: [],
@@ -73,17 +64,15 @@ export default {
       return (this.member.discount || 100) / 10
     }
   },
-  onLoad() {
-    this.statusBarHeight = uni.getSystemInfoSync().statusBarHeight || 20
+  onShareAppMessage() { const {query, ...share}=customerShare('home',this.stores[this.storeIndex]); return share },
+  onShareTimeline() { const {path, ...share}=customerShare('home',this.stores[this.storeIndex]); return share },
+  onLoad(options) {
+    receiveSharedStore(options, uni)
+    this.statusBarHeight = (uni.getWindowInfo?.().statusBarHeight) || 20
   },
   onShow() {
     this.refreshStaffEntry()
     this.bannerActive = true
-    if (!uni.getStorageSync('customer_token') && !welcomeShown) {
-      welcomeShown = true
-      this.showWelcome = true
-    }
-    if (uni.getStorageSync('customer_token')) this.showWelcome = false
     this.loadAll()
   },
   onHide() { this.staffRequest++; this.staffEntry=null; this.stopBanners() },
@@ -108,29 +97,13 @@ export default {
     },
     bannerSrc(url) { return typeof window === 'undefined' ? BASE_URL + url : url },
     stopBanners() { this.bannerActive=false; this.bannerRequest++; clearInterval(this.bannerTimer) },
-    startBannerTimer() { clearInterval(this.bannerTimer); if(this.bannerActive && this.banners.length>1)this.bannerTimer=setInterval(()=>{if(!this.showWelcome)this.bannerIndex=(this.bannerIndex+1)%this.banners.length},5000) },
+    startBannerTimer() { clearInterval(this.bannerTimer); if(this.bannerActive && this.banners.length>1)this.bannerTimer=setInterval(()=>{this.bannerIndex=(this.bannerIndex+1)%this.banners.length},5000) },
     selectBanner(index) { this.bannerIndex=index; this.startBannerTimer() },
     moveBanner(step) { if(this.banners.length)this.selectBanner((this.bannerIndex+step+this.banners.length)%this.banners.length) },
     bannerTouchStart(e) { clearInterval(this.bannerTimer); this.bannerTouchX=e.changedTouches?.[0]?.clientX || 0; this.bannerTouchY=e.changedTouches?.[0]?.clientY || 0 },
     bannerTouchEnd(e) { const dx=(e.changedTouches?.[0]?.clientX || 0)-this.bannerTouchX; const dy=(e.changedTouches?.[0]?.clientY || 0)-this.bannerTouchY; if(Math.abs(dx)>40 && Math.abs(dx)>Math.abs(dy)){this.bannerSkipTapUntil=Date.now()+500;this.moveBanner(dx<0?1:-1)}else this.startBannerTimer() },
     openBanner() { if(Date.now()<this.bannerSkipTapUntil)return; if(this.banners[this.bannerIndex]?.target==='rooms')this.go('/pages/customer/rooms') },
     bannerFailed(id) { this.banners=this.banners.filter(item=>item.id!==id); this.bannerIndex=Math.min(this.bannerIndex,Math.max(0,this.banners.length-1));this.startBannerTimer() },
-    welcomeAccount(register) {
-      this.showWelcome = false
-      this.go('/pages/customer/login' + (register ? '?mode=register' : ''))
-    },
-    async welcomeWechat() {
-      if (this.welcomeLoading) return
-      this.welcomeLoading = true
-      try {
-        const result = await wechatLogin('CUSTOMER')
-        if (!completeCustomerWechat(result)) { this.showWelcome = false; return }
-        this.showWelcome = false
-        await this.loadAll()
-      } catch (e) {
-        uni.showToast({ title: e.message || '微信登录未完成，请重试', icon: 'none' })
-      } finally { this.welcomeLoading = false }
-    },
     async changeStore(e) {
       this.storeIndex=Number(e.detail.value)
       const id=this.stores[this.storeIndex].id
@@ -176,18 +149,18 @@ export default {
 .hero-title text{display:block}.hero-title{max-width:330rpx}.product-photo{width:100%;height:100%}</style>
 
 <style scoped>
-.welcome-mask{position:fixed;inset:0;z-index:80;background:rgba(49,27,21,.48);display:flex;align-items:center;justify-content:center;padding:40rpx;overflow-y:auto}
-.welcome-card{width:100%;max-width:640rpx;max-height:90vh;overflow-y:auto;background:linear-gradient(160deg,#fff0dd,#fffdfa 45%);border:1rpx solid #ffe8d0;border-radius:36rpx;padding:42rpx 36rpx 22rpx;text-align:center;box-shadow:0 28rpx 90rpx #391c2426}
-.welcome-seal{width:92rpx;height:92rpx;margin:0 auto 24rpx;border-radius:26rpx;background:linear-gradient(135deg,#c13b2e,#e6793e);color:#fff7e9;font-family:serif;font-size:52rpx;display:flex;align-items:center;justify-content:center;box-shadow:0 12rpx 24rpx #c33c2f20}
-.welcome-kicker{display:block;font-size:21rpx;letter-spacing:4rpx;color:#ac7355}
-.welcome-title{display:block;margin:18rpx 0;font-family:serif;font-size:36rpx;font-weight:600;line-height:1.5;color:#482d24}
-.welcome-description{display:block;white-space:pre-line;color:#8b7466;font-size:24rpx;line-height:1.9}
-.welcome-info{text-align:left;background:#fff4e9;border:1rpx solid #f6e4d3;border-radius:18rpx;padding:22rpx 24rpx;margin:30rpx 0;color:#907766;font-size:22rpx;line-height:1.8}
-.welcome-info-title{display:block;color:#604537;font-size:24rpx;font-weight:500;margin-bottom:6rpx}
-.welcome-primary{background:linear-gradient(110deg,#bf392e,#df6737);color:#fff;font-size:28rpx;line-height:92rpx;border-radius:16rpx;margin:0;box-shadow:0 10rpx 24rpx #c33c2f18}
-.welcome-links{display:flex;align-items:center;justify-content:center;gap:12rpx;color:#c8ac96;margin-top:14rpx}
-.welcome-links button{background:transparent;color:#a44c33;font-size:24rpx;padding:10rpx 12rpx;margin:0;width:auto;line-height:2}
-.welcome-skip{background:transparent;color:#9a8577;font-size:23rpx;width:auto;padding:10rpx 28rpx;line-height:2;margin:0 auto}
+
+
+
+
+
+
+
+
+
+
+
+
 </style>
 
 <style scoped>
