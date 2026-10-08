@@ -51,8 +51,8 @@
       <view class="contact-field guest-field"><view><text>到店人数 <text class="required">*</text></text></view><view class="guest-stepper"><button :disabled="submitting || contact.guests<=1" aria-label="减少到店人数" @tap="contact.guests=Math.max(1,Number(contact.guests||1)-1)">−</button><input v-model.number="contact.guests" type="number" :disabled="submitting" maxlength="3" aria-label="到店人数" /><text>人</text><button :disabled="submitting || contact.guests>=100" aria-label="增加到店人数" @tap="contact.guests=Math.min(100,Number(contact.guests||0)+1)">＋</button></view></view>
       <view class="contact-field"><text>预约备注 <text class="optional">选填</text></text><textarea v-model="contact.remark" :disabled="submitting" maxlength="500" placeholder="如茶具、布置或其他需求" aria-label="预约备注" /><text class="remark-count">{{contact.remark.length}} / 500</text></view>
     </view>
-        <checkbox-group @change="bookingPrivacyAccepted = $event.detail.value.includes('booking')"><label class="booking-privacy"><checkbox value="booking" :checked="bookingPrivacyAccepted" color="#b5362d" /><text>我单独同意将本次预约的订单号、门店、茶室、时间、人数、联系人、电话和备注，通过WxPusher预约通知服务提供给负责处理的门店员工，用于排期和联系。拒绝时可联系门店电话预约。</text></label></checkbox-group>
-        <text class="booking-policy" @tap="openBookingPrivacy">查看隐私政策及服务商说明 ›</text>
+        <view class="booking-consent-row"><checkbox-group @change="bookingPrivacyAccepted = $event.detail.value.includes('booking')"><label class="booking-privacy"><checkbox value="booking" :checked="bookingPrivacyAccepted" color="#b5362d" /><text>同意预约资料用于门店处理通知</text></label></checkbox-group><text class="booking-detail-toggle" @tap="bookingDisclosureOpen = !bookingDisclosureOpen">{{bookingDisclosureOpen?'收起':'说明'}}</text></view>
+        <view v-if="bookingDisclosureOpen" class="booking-disclosure"><text>本次预约的订单号、门店、茶室、时间、人数、联系人、电话和备注，会通过WxPusher预约通知服务提供给负责处理的门店员工，用于排期和联系。拒绝时可联系门店电话预约。</text><text class="booking-policy" @tap="openBookingPrivacy">查看隐私政策及服务商说明 ›</text></view>
         <text class="approval-note">提交后需店员确认才算预约成功，结果可在「我的预约」查看。{{bookingNoticeIds.length?'允许微信订阅通知后，预约通过时会收到提醒。':''}}</text>
       </scroll-view>
       <text v-if="bookingError" class="booking-error" role="alert">{{bookingError}}</text>
@@ -90,7 +90,7 @@ export default {
       ends: {}, occupied: {}, slotsLoading: false,
       pick: {},    // roomId -> time
       loading: false,
-      bookingPrivacyAccepted:false, submitting: false, booking:null, bookingError:'', bookingResult:null, contact:{name:'',phone:'',remark:'',guests:1},contactTouched:{},contactLoading:false,contactOwner:null
+      bookingDisclosureOpen:false, bookingPrivacyAccepted:false, submitting: false, booking:null, bookingError:'', bookingResult:null, contact:{name:'',phone:'',remark:'',guests:1},contactTouched:{},contactLoading:false,contactOwner:null
       ,bookingNoticeIds:[],bookingNoticeBusy:false,bookingNoticeFailure:null,bookingNoticeSupported:typeof uni!=='undefined' && typeof uni.requestSubscribeMessage==='function'
     }
   },
@@ -247,6 +247,7 @@ export default {
       if(!selection || !time)return uni.showToast({title:'请选择可订时段',icon:'none'})
       this.bookingError=''
       this.bookingPrivacyAccepted=false
+      this.bookingDisclosureOpen=false
       this.booking={roomId:r.id,roomName:r.name,storeName:this.stores[this.storeIndex]?.name||'',date:this.selDate,time,end:this.ends[r.id],hours:selection.hours,amount:this.amount(r)}
     },
     async submitBooking() {
@@ -323,4 +324,6 @@ export default {
 .booking-error{display:block;flex-shrink:0;margin:0 28rpx;padding:18rpx 20rpx;background:#fff0e8;border:1rpx solid #edc4b5;border-radius:12rpx;color:#ad3828;font-size:23rpx;line-height:1.6}.result-body{padding:12rpx 32rpx 28rpx;display:flex;flex-direction:column;gap:20rpx;color:#735b49;font-size:25rpx;line-height:1.8}
 </style>
 
-<style scoped>.booking-privacy{display:flex;align-items:flex-start;font-size:23rpx;line-height:1.8;color:#78695c;margin:22rpx 0}.booking-privacy checkbox{flex-shrink:0;transform:scale(.78);transform-origin:left top}.booking-privacy text{flex:1}.booking-policy{display:block;color:#9f352b;font-size:24rpx;padding:16rpx 0}</style>
+<style scoped>.booking-privacy{display:flex;align-items:center;font-size:24rpx;line-height:1.8;color:#78695c;margin:0;min-height:62rpx}.booking-privacy checkbox{flex-shrink:0;width:40rpx;transform:scale(.65);transform-origin:center}.booking-privacy text{flex:1}.booking-policy{display:block;color:#9f352b;font-size:24rpx;padding:16rpx 0}</style>
+
+<style scoped>.booking-consent-row{display:flex;align-items:center;gap:12rpx;margin:20rpx 0}.booking-consent-row checkbox-group{flex:1;min-width:0}.booking-detail-toggle{color:#ad8871;font-size:22rpx;padding:16rpx 0 16rpx 12rpx}.booking-disclosure{padding:20rpx 24rpx;background:#f8f1e8;border-radius:14rpx;margin-bottom:20rpx;color:#8b7967;font-size:23rpx;line-height:1.9}.booking-disclosure>text{display:block}.booking-disclosure .booking-policy{padding-bottom:0}</style>
