@@ -4,11 +4,12 @@
     <text class="title">{{bindingEntry?'绑定会员账户':'手机号快捷登录'}}</text>
     <text class="intro">{{bindingEntry?'核对门店登记的手机号，再通过短信验证码绑定会员账户。':'首次绑定需填写手机号并验证短信；已绑定的会员可直接登录。'}}</text>
     <view class="form-card">
-      <PrivacyConsent ref="privacyConsent" @change="privacyFormAllowed=$event" :member="true" />
+
       <view v-if="bindingEntry || phoneRequired" class="field"><text>手机号</text><input v-model="phone" type="number" maxlength="11" :disabled="!privacyFormAllowed || loading" placeholder="请手动输入11位手机号" @confirm="submit"/></view>
       <view v-if="!bindingEntry && phoneRequired" class="field"><text>称呼（选填）</text><input v-model="name" maxlength="32" :disabled="!privacyFormAllowed || loading" placeholder="首次注册时，填写你的称呼"/></view>
       <button class="wechat-login" :loading="loading" :disabled="loading" @tap="submit">{{loading?'正在处理…':(bindingEntry?'核对并验证手机号':'手机号快捷登录')}}</button>
-      <text class="note">{{bindingEntry?'请填写门店登记的手机号。':(phoneRequired?'手机号用于会员联系资料，不会自动合并其他会员账户。':'登录后可查看本店会员账户和消费记录。')}}</text>
+      <PrivacyConsent ref="privacyConsent" @change="privacyFormAllowed=$event" :member="true" />
+      <text v-if="bindingEntry || phoneRequired" class="note">{{bindingEntry?'请填写门店登记的手机号。':(phoneRequired?'手机号用于会员联系资料，不会自动合并其他会员账户。':'登录后可查看本店会员账户和消费记录。')}}</text>
     </view>
     <button class="staff-entry" :disabled="loading" @tap="staffLogin">员工账号登录 ›</button>
   </view>
@@ -40,5 +41,5 @@ export default {
 }
 </script>
 <style scoped>
-.login-page{padding:90rpx 40rpx;min-height:100vh;box-sizing:border-box;background:#fff7ef}.seal{width:90rpx;height:90rpx;border-radius:20rpx;background:#b5362d;color:#fff;display:flex;align-items:center;justify-content:center;font-size:48rpx;font-family:serif;margin-bottom:40rpx}.title{font-size:46rpx;display:block;font-weight:600;color:#423528;letter-spacing:3rpx}.intro{display:block;font-size:26rpx;color:#807366;margin:22rpx 0 40rpx;line-height:1.8}.form-card{background:#fffdfa;border:1rpx solid #ecdfd2;border-radius:28rpx;padding:38rpx 32rpx}.field{margin-bottom:28rpx}.field text{font-size:26rpx;color:#6a5d50}.field input{height:98rpx;background:#fff5eb;border:1rpx solid #f1e4d7;border-radius:14rpx;padding:0 22rpx;margin-top:14rpx;font-size:28rpx}.wechat-login{background:#b5362d;color:white;font-size:30rpx;line-height:96rpx;border-radius:16rpx;margin-top:38rpx}.wechat-login[disabled]{opacity:.6}.note{display:block;color:#94877a;font-size:23rpx;line-height:1.8;margin-top:24rpx}.staff-entry{background:transparent;color:#9b6d55;font-size:25rpx;margin-top:28rpx}
+.login-page{padding:90rpx 40rpx;min-height:100vh;box-sizing:border-box;background:#fff7ef}.seal{width:90rpx;height:90rpx;border-radius:20rpx;background:#b5362d;color:#fff;display:flex;align-items:center;justify-content:center;font-size:48rpx;font-family:serif;margin-bottom:40rpx}.title{font-size:46rpx;display:block;font-weight:600;color:#423528;letter-spacing:3rpx}.intro{display:block;font-size:24rpx;color:#807366;margin:22rpx 0 40rpx;line-height:1.8}.form-card{margin-top:52rpx;padding:0;background:transparent}.field{margin-bottom:28rpx}.field text{font-size:26rpx;color:#6a5d50}.field input{height:98rpx;background:#fff5eb;border:1rpx solid #f1e4d7;border-radius:14rpx;padding:0 22rpx;margin-top:14rpx;font-size:28rpx}.wechat-login{background:#b5362d;color:white;font-size:30rpx;line-height:96rpx;border-radius:16rpx;margin-top:24rpx}.wechat-login[disabled]{opacity:.6}.note{display:block;color:#94877a;font-size:23rpx;line-height:1.8;margin-top:24rpx}.staff-entry{background:transparent;color:#9b6d55;font-size:25rpx;margin-top:28rpx}
 </style>

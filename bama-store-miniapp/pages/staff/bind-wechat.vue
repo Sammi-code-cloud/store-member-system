@@ -5,9 +5,10 @@
       <text class="note">输入管理员登记的本人手机号，确认绑定当前微信。绑定后可使用员工快捷登录，无需输入员工密码。</text>
       <text v-if="!ticket" class="error">绑定码无效，请向管理员获取二维码后重新扫码。</text>
       <template v-else>
-        <PrivacyConsent ref="privacyConsent" @change="privacyFormAllowed=$event" />
+
         <input v-model="phone" :disabled="!privacyFormAllowed || loading" type="number" maxlength="11" placeholder="员工登录手机号" />
         <button class="btn-primary" :loading="loading" :disabled="loading" @tap="bind">确认绑定当前微信</button>
+        <PrivacyConsent ref="privacyConsent" @change="privacyFormAllowed=$event" />
       </template>
     </view>
   </view>

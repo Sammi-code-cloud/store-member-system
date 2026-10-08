@@ -1,5 +1,6 @@
 <template>
- <view class="confirm-page"><view class="seal">八马</view><text class="title">登录门店管理后台</text><text class="note">电脑正在请求登录。确认后，将使用当前微信绑定的员工账号登录该电脑。</text><view class="notice">请确认这是你本人打开的后台页面。不要确认他人发送的登录二维码。</view><PrivacyConsent ref="privacyConsent" @change="privacyFormAllowed=$event" /><text v-if="error" class="error">{{error}}</text><button class="confirm" :loading="loading" :disabled="loading || done || !ticket" @tap="confirm">{{done?'已确认，请返回电脑':'确认登录'}}</button><button v-if="!done" :disabled="loading" @tap="cancel">取消</button></view>
+ <view class="confirm-page"><view class="seal">八马</view><text class="title">登录门店管理后台</text><text class="note">电脑正在请求登录。确认后，将使用当前微信绑定的员工账号登录该电脑。</text><view class="notice">请确认这是你本人打开的后台页面。不要确认他人发送的登录二维码。</view><text v-if="error" class="error">{{error}}</text><button class="confirm" :loading="loading" :disabled="loading || done || !ticket" @tap="confirm">{{done?'已确认，请返回电脑':'确认登录'}}</button><PrivacyConsent ref="privacyConsent" @change="privacyFormAllowed=$event" />
+<button v-if="!done" :disabled="loading" @tap="cancel">取消</button></view>
 </template>
 <script>
 import PrivacyConsent from '@/components/PrivacyConsent.vue'

@@ -4,7 +4,7 @@
     <text class="title">首次绑定手机号</text>
     <text class="intro">验证后关联你的会员账户，下次使用已绑定身份可直接登录，无需再次接收短信。</text>
     <view class="card">
-      <PrivacyConsent ref="privacyConsent" @change="privacyFormAllowed=$event" :member="true" />
+
       <text v-if="!ticket || expired" class="notice">登录验证已过期，请重新发起登录。</text>
       <text v-else-if="!smsEnabled" class="notice">门店短信服务尚未开通，暂时无法绑定。你可以使用已有账号登录，或联系门店。</text>
       <view class="field"><text>手机号</text><input v-model="phone" type="number" maxlength="11" :disabled="!privacyFormAllowed || sending || saving" placeholder="请输入本人手机号" @input="phoneChanged" /></view>
@@ -13,6 +13,7 @@
       <text v-if="error" class="error">{{ error }}</text>
       <button class="primary" :disabled="!canBind" :loading="saving" @tap="bind">验证并登录</button>
       <button v-if="!ticket || expired || !smsEnabled" class="secondary" :disabled="sending || saving || refreshing" :loading="refreshing" @tap="refresh">重新发起登录</button>
+      <PrivacyConsent ref="privacyConsent" @change="privacyFormAllowed=$event" :member="true" />
     </view>
     <button class="secondary" :disabled="saving || sending" @tap="account">使用账号登录</button>
     <text class="footer">已有会员将关联原账户，新顾客验证后创建账户，各分店共用。</text>

@@ -13,8 +13,9 @@
       <text v-if="store.address" class="hint">{{ store.address }}</text>
       <text class="hint">登录后可预订茶室、查看订单和会员账户。</text>
       <text class="privacy">首次绑定需填写手机号并验证短信；已绑定的会员可直接登录。</text>
-      <PrivacyConsent ref="privacyConsent" @change="privacyFormAllowed=$event" :member="true" />
+
       <button class="wechat" :disabled="busy" :loading="busy" @tap="login">手机号快捷登录</button>
+      <PrivacyConsent ref="privacyConsent" @change="privacyFormAllowed=$event" :member="true" />
       <text v-if="loginError" class="error">{{ loginError }}</text>
     </view>
   </view>

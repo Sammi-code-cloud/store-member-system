@@ -6,7 +6,7 @@
       <text class="sub">扫码收款 · 核销 · 储值</text>
     </view>
 
-    <PrivacyConsent ref="privacyConsent" @change="privacyFormAllowed=$event" />
+
     <button class="wechat-login" :loading="loading" :disabled="loading" @tap="wechat">员工快捷登录</button>
     <view v-if="bindTicket" class="binding-note">首次使用快捷登录，请填写已有员工账号密码完成绑定</view>
     <view class="form card">
@@ -23,6 +23,7 @@
       </view>
     </view>
 
+    <PrivacyConsent ref="privacyConsent" @change="privacyFormAllowed=$event" />
     <text class="staff-note">使用门店管理员分配的员工账号登录</text>
     <button class="customer-return" @tap="backToCustomer">返回顾客首页</button>
   </view>
